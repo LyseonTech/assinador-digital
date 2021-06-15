@@ -9,3 +9,4 @@ node_modules/
 .phpunit.result.cache
 /docs/.vuepress/dist
 *.phar
+/src/__test__/coverage

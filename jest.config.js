@@ -17,13 +17,17 @@ module.exports = {
 	clearMocks: true,
 
 	// Indicates whether the coverage information should be collected while executing the test
-	// collectCoverage: false,
+	collectCoverage: true,
 
 	// An array of glob patterns indicating a set of files for which coverage information should be collected
-	// collectCoverageFrom: undefined,
+	collectCoverageFrom: [
+		'./src/**/*.{js,vue}',
+		'./src/**/**/.{js,vue}',
+		'!**/node_modules/**',
+	],
 
 	// The directory where Jest should output its coverage files
-	coverageDirectory: 'coverage',
+	coverageDirectory: './src/__test__/coverage',
 
 	// An array of regexp pattern strings used to skip coverage collection
 	// coveragePathIgnorePatterns: [
@@ -34,12 +38,10 @@ module.exports = {
 	// coverageProvider: "babel",
 
 	// A list of reporter names that Jest uses when writing coverage reports
-	// coverageReporters: [
-	//   "json",
-	//   "text",
-	//   "lcov",
-	//   "clover"
-	// ],
+	coverageReporters: [
+		'text-summary',
+		'html',
+	],
 
 	// An object that configures minimum threshold enforcement for coverage results
 	// coverageThreshold: undefined,
@@ -71,17 +73,15 @@ module.exports = {
 	// ],
 
 	// An array of file extensions your modules use
-	// moduleFileExtensions: [
-	//   "js",
-	//   "json",
-	//   "jsx",
-	//   "ts",
-	//   "tsx",
-	//   "node"
-	// ],
+	moduleFileExtensions: [
+		'js',
+		'vue',
+	],
 
 	// A map from regular expressions to module names or to arrays of module names that allow to stub out resources with a single module
-	// moduleNameMapper: {},
+	moduleNameMapper: {
+		'^@/(.*)$': '<rootDir>/src/$1',
+	},
 
 	// An array of regexp pattern strings, matched against all module paths before considered 'visible' to the module loader
 	// modulePathIgnorePatterns: [],
@@ -137,7 +137,7 @@ module.exports = {
 	// snapshotSerializers: [],
 
 	// The test environment that will be used for testing
-	testEnvironment: 'node',
+	testEnvironment: 'jest-environment-jsdom-sixteen',
 
 	// Options that will be passed to the testEnvironment
 	// testEnvironmentOptions: {},
@@ -172,7 +172,11 @@ module.exports = {
 	// timers: "real",
 
 	// A map from regular expressions to paths to transformers
-	// transform: undefined,
+	transform: {
+		'.*\\.(vue)$': 'vue-jest',
+		'.*\\.(js)$': 'babel-jest',
+		'.+\\.(css|styl|less|sass|scss|svg|png|jpg|ttf|woff|woff2)$': 'jest-transform-stub',
+	},
 
 	// An array of regexp pattern strings that are matched against all source file paths, matched files will skip transformation
 	// transformIgnorePatterns: [
@@ -184,7 +188,7 @@ module.exports = {
 	// unmockedModulePathPatterns: undefined,
 
 	// Indicates whether each individual test should be reported during the run
-	// verbose: undefined,
+	verbose: false,
 
 	// An array of regexp patterns that are matched against all source file paths before re-running tests in watch mode
 	// watchPathIgnorePatterns: [],

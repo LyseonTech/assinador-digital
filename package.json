@@ -13,7 +13,9 @@
     "stylelint": "stylelint css/*.css css/*.scss src/**/*.scss src/**/*.vue",
     "stylelint:fix": "stylelint css/*.css css/*.scss src/**/*.scss src/**/*.vue --fix",
     "test:e2e": "cypress open",
-    "test:unit": "jest"
+    "test:unit": "jest",
+    "test:unit:watch": "jest --watch",
+    "test:coverage": "jest --collect-coverage"
   },
   "dependencies": {
     "@nextcloud/axios": "^1.6.0",
@@ -39,14 +41,17 @@
     "node": ">=10.0.0"
   },
   "devDependencies": {
-    "@babel/core": "^7.11.6",
+    "@babel/core": "^7.14.3",
     "@babel/plugin-syntax-dynamic-import": "^7.8.3",
-    "@babel/preset-env": "^7.11.5",
+    "@babel/preset-env": "^7.14.4",
     "@nextcloud/browserslist-config": "^1.0.0",
     "@nextcloud/eslint-config": "^2.2.0",
     "@nextcloud/eslint-plugin": "^1.4.0",
     "@nextcloud/webpack-vue-config": "^1.4.1",
+    "@vue/test-utils": "^1.2.0",
+    "babel-core": "7.0.0-bridge.0",
     "babel-eslint": "^10.1.0",
+    "babel-jest": "^27.0.2",
     "babel-loader": "^8.1.0",
     "css-loader": "^4.3.0",
     "cypress": "^6.4.0",
@@ -61,6 +66,8 @@
     "eslint-plugin-vue": "^6.2.2",
     "file-loader": "^6.1.0",
     "jest": "^26.6.3",
+    "jest-environment-jsdom-sixteen": "^2.0.0",
+    "jest-transform-stub": "^2.0.0",
     "node-sass": "^4.14.1",
     "sass-loader": "^8.0.2",
     "stylelint": "^13.7.1",
@@ -68,8 +75,9 @@
     "stylelint-scss": "^3.18.0",
     "stylelint-webpack-plugin": "^2.1.0",
     "url-loader": "^4.1.0",
-    "vue-loader": "^15.9.3",
-    "vue-template-compiler": "^2.6.12",
+    "vue-jest": "^3.0.7",
+    "vue-loader": "^15.9.7",
+    "vue-template-compiler": "^2.6.14",
     "webpack": "^4.44.2",
     "webpack-cli": "^3.3.12"
   }
