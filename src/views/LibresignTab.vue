@@ -27,8 +27,16 @@
 			id="libresign-tab"
 			icon="icon-rename"
 			:name="t('libresign', 'LibreSign')">
+			<Tooltip v-show="tooltip.show"
+				:message="tooltip.message"
+				:icon="tooltip.icon"
+				:type="tooltip.type"
+				:time="tooltip.time" />
+
 			<div v-show="showButtons" class="lb-ls-buttons">
-				<button class="primary" :disabled="!hasSign" @click="option('sign')">
+				<button class="primary"
+					:disabled="!hasSign"
+					@click="option('sign')">
 					{{ t('libresign', 'Sign') }}
 				</button>
 				<button
@@ -75,6 +83,7 @@ import axios from '@nextcloud/axios'
 import { generateUrl } from '@nextcloud/router'
 import Sign from '../Components/Sign'
 import Request from '../Components/Request'
+import Tooltip from '../Components/TooltipMessage/Tooltip'
 
 export default {
 	name: 'LibresignTab',
@@ -83,6 +92,7 @@ export default {
 		AppSidebar,
 		AppSidebarTab,
 		Sign,
+		Tooltip,
 		Request,
 	},
 
@@ -97,6 +107,13 @@ export default {
 			canRequestSign: false,
 			canSign: false,
 			fileInfo: null,
+			tooltip: {
+				show: false,
+				message: '',
+				icon: '',
+				type: '',
+			},
+			errorMessage: '',
 		}
 	},
 
@@ -141,8 +158,35 @@ export default {
 				this.canRequestSign = response.data.settings.canRequestSign
 				this.canSign = response.data.settings.canSign
 
+				if (response.data.settings.canSign === false) {
+					this.tooltip = {
+						message: t('libresign', 'There are no subscription requests for this document'),
+						icon: 'icon-details-white',
+						type: 'info',
+						show: true,
+					}
+				}
+
+				if (response.data.settings.canRequestSign === false) {
+					this.tooltip = {
+						message: t('libresign', 'You cannot request signature for this document, please contact your administrator'),
+						icon: 'icon-details',
+						type: 'info',
+						show: true,
+					}
+				}
+
+				console.info(response)
 			} catch (err) {
+				this.tooltip = {
+					type: 'error',
+					message: t('libresign', 'Sorry, but you are not authorized to use LibreSign, please contact the administrator'),
+					icon: 'icon-error-white',
+					show: true,
+				}
+
 				this.canRequestSign = err.response.data.settings.canRequestSign
+				this.canSign = err.response.data.settings.canSign
 			}
 		},
 
@@ -157,7 +201,6 @@ export default {
 				if (err.response.data.action === 400) {
 					window.location.href = generateUrl('/apps/libresign/reset-password?redirect=CreatePassword')
 				}
-				console.error(err.response)
 				return showError(err.response.data.errors[0])
 			}
 		},
@@ -171,7 +214,6 @@ export default {
 					name: this.fileInfo.name.split('.pdf')[0],
 					users,
 				})
-				console.info(response)
 				this.option('request')
 				this.clearRequestList()
 				return showSuccess(response.data.message)

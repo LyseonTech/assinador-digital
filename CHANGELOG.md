@@ -21,6 +21,7 @@ Types of changes:
 - List of documents
 - Test for validation of Swagger documentation
 - Added integration with Approval app. Thanks to @eneiluj
+- Tooltip to bring information to the user. Thanks to @vinicios-gomes
 - Endpoint to list LibreSign files
 - Validate by app libresign 
 
