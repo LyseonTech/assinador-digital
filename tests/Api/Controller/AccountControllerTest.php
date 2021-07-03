@@ -146,4 +146,18 @@ final class AccountControllerTest extends ApiTestCase {
 
 		$this->assertRequest();
 	}
+
+	/**
+	 * @runInSeparateProcess
+	 */
+	public function testApprovalListWithSuccess() {
+		$this->createUser('username', 'password');
+		$this->request
+			->withPath('/account/files/approval/list')
+			->withRequestHeader([
+				'Authorization' => 'Basic ' . base64_encode('username:password')
+			]);
+
+		$this->assertRequest();
+	}
 }
