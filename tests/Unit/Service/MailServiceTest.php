@@ -6,7 +6,6 @@ use OC\Mail\Mailer;
 use OCA\Libresign\Db\File;
 use OCA\Libresign\Db\FileMapper;
 use OCA\Libresign\Db\FileUser;
-use OCA\Libresign\Db\FileUserMapper;
 use OCA\Libresign\Service\MailService;
 use OCP\IConfig;
 use OCP\IL10N;
@@ -24,8 +23,6 @@ final class MailServiceTest extends \OCA\Libresign\Tests\Unit\TestCase {
 	private $mailer;
 	/** @var FileMapper */
 	private $fileMapper;
-	/** @var FileUserMapper */
-	private $fileUserMapper;
 	/** @var IL10N */
 	private $l10n;
 	/** @var IURLGenerator */
@@ -40,28 +37,23 @@ final class MailServiceTest extends \OCA\Libresign\Tests\Unit\TestCase {
 		$this->logger = $this->createMock(LoggerInterface::class);
 		$this->mailer = $this->createMock(IMailer::class);
 		$this->fileMapper = $this->createMock(FileMapper::class);
-		$this->fileUserMapper = $this->createMock(FileUserMapper::class);
 		$this->l10n = $this->createMock(IL10N::class);
+		$this->l10n
+			->method('t')
+			->will($this->returnArgument(0));
 		$this->urlGenerator = $this->createMock(IURLGenerator::class);
 		$this->config = $this->createMock(IConfig::class);
 		$this->service = new MailService(
 			$this->logger,
 			$this->mailer,
 			$this->fileMapper,
-			$this->fileUserMapper,
 			$this->l10n,
 			$this->urlGenerator,
 			$this->config
 		);
 	}
 
-	public function testFailNoUsersToNotify() {
-		$this->expectExceptionMessage('No users to notify');
-
-		$this->service->notifyAllUnsigned();
-	}
-
-	public function testSuccessNotifyAllUnsigned() {
+	public function testSuccessNotifyUnsignedUser() {
 		$fileUser = $this->createMock(FileUser::class);
 		$fileUser
 			->method('__call')
@@ -73,9 +65,6 @@ final class MailServiceTest extends \OCA\Libresign\Tests\Unit\TestCase {
 				['getUuid', [], 'asdfg'],
 				['getFileId', [], 1]
 			]));
-		$this->fileUserMapper
-			->method('findUnsigned')
-			->will($this->returnValue([$fileUser]));
 		
 		$file = $this->createMock(File::class);
 		$file
@@ -85,9 +74,11 @@ final class MailServiceTest extends \OCA\Libresign\Tests\Unit\TestCase {
 		$this->fileMapper
 			->method('getById')
 			->will($this->returnValue($file));
-
-		$actual = $this->service->notifyAllUnsigned();
-		$this->assertTrue($actual);
+		$this->config
+			->method('getAppValue')
+			->willReturn(true);
+		$actual = $this->service->notifyUnsignedUser($fileUser);
+		$this->assertNull($actual);
 	}
 
 	public function testFailToSendMailToUnsignedUser() {
@@ -104,9 +95,6 @@ final class MailServiceTest extends \OCA\Libresign\Tests\Unit\TestCase {
 				['getUuid', [], 'asdfg'],
 				['getFileId', [], 1]
 			]));
-		$this->fileUserMapper
-			->method('findUnsigned')
-			->will($this->returnValue([$fileUser]));
 
 		$file = $this->createMock(File::class);
 		$file
@@ -124,7 +112,7 @@ final class MailServiceTest extends \OCA\Libresign\Tests\Unit\TestCase {
 		$this->config
 			->method('getAppValue')
 			->will($this->returnValue(true));
-		$actual = $this->service->notifyAllUnsigned();
-		$this->assertTrue($actual);
+		$actual = $this->service->notifyUnsignedUser($fileUser);
+		$this->assertNull($actual);
 	}
 }

@@ -45,6 +45,7 @@
 			<Sign v-show="signShow"
 				ref="sign"
 				:disabled="disabledSign"
+				:pfx="hasPfx"
 				@sign:document="signDocument">
 				<template slot="actions">
 					<button class="lb-ls-return-button" @click="option('sign')">
@@ -97,6 +98,7 @@ export default {
 			canRequestSign: false,
 			canSign: false,
 			fileInfo: null,
+			hasPfx: false,
 		}
 	},
 
@@ -115,6 +117,7 @@ export default {
 	created() {
 		this.fileInfo = window.OCA.Libresign.fileInfo
 		this.getInfo()
+		this.getMe()
 	},
 
 	methods: {
@@ -135,30 +138,37 @@ export default {
 			this.signShow = false
 		},
 
+		async getMe() {
+			const response = await axios.get(generateUrl('/apps/libresign/api/0.1/account/me'))
+			this.hasPfx = response.data.settings.hasSignatureFile
+			this.canRequestSign = response.data.settings.canRequestSign
+		},
+
 		async getInfo() {
 			try {
 				console.info('fileInfo: ', this.fileInfo)
 				const response = await axios.get(generateUrl(`/apps/libresign/api/0.1/file/validate/file_id/${this.fileInfo.id}`))
-				this.canRequestSign = response.data.settings.canRequestSign
 				this.canSign = response.data.settings.canSign
 
 			} catch (err) {
-				this.canRequestSign = err.response.data.settings.canRequestSign
+				this.canSign = false
 			}
 		},
 
 		async signDocument(param) {
 			try {
+				this.disabledSign = true
 				const response = await axios.post(generateUrl(`apps/libresign/api/0.1/sign/file_id/${this.fileInfo.id}`), {
 					password: param,
 				})
 				this.option('sign')
+				this.canSign = false
 				return showSuccess(response.data.message)
 			} catch (err) {
 				if (err.response.data.action === 400) {
 					window.location.href = generateUrl('/apps/libresign/reset-password?redirect=CreatePassword')
 				}
-				console.error(err.response)
+				this.disabledSign = false
 				return showError(err.response.data.errors[0])
 			}
 		},

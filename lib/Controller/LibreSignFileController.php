@@ -17,7 +17,7 @@ use OCP\IURLGenerator;
 use OCP\IUserSession;
 use Psr\Log\LoggerInterface;
 
-class LibresignController extends Controller {
+class LibreSignFileController extends Controller {
 	/** @var FileUserMapper */
 	private $fileUserMapper;
 	/** @var FileMapper */
@@ -92,21 +92,24 @@ class LibresignController extends Controller {
 			$return['success'] = true;
 			$return['name'] = $file->getName();
 			$return['file'] = $this->urlGenerator->linkToRoute('libresign.page.getPdf', ['uuid' => $file->getUuid()]);
-			$signatures = $this->fileUserMapper->getByFileId($file->id);
-			foreach ($signatures as $signature) {
+			$signers = $this->fileUserMapper->getByFileId($file->id);
+			if ($this->userSession->getUser()) {
+				$uid = $this->userSession->getUser()->getUID();
+			}
+			foreach ($signers as $signer) {
 				$signatureToShow = [
-					'signed' => $signature->getSigned(),
-					'displayName' => $signature->getDisplayName(),
-					'fullName' => $signature->getFullName(),
+					'signed' => $signer->getSigned(),
+					'displayName' => $signer->getDisplayName(),
+					'fullName' => $signer->getFullName(),
 					'me' => false
 				];
 				if (!empty($uid)) {
-					$signatureToShow['me'] = $uid === $signature->getUserId();
-					if ($uid === $signature->getUserId() && !$signature->getSigned()) {
+					$signatureToShow['me'] = $uid === $signer->getUserId();
+					if ($uid === $signer->getUserId() && !$signer->getSigned()) {
 						$canSign = true;
 					}
 				}
-				$return['signatures'][] = $signatureToShow;
+				$return['signers'][] = $signatureToShow;
 			}
 			$statusCode = Http::STATUS_OK;
 		} catch (\Throwable $th) {
@@ -125,8 +128,10 @@ class LibresignController extends Controller {
 			'hasSignatureFile' => false
 		];
 		if (!empty($uid)) {
-			$return['settings']['canRequestSign'] = $this->account->canRequestSign($this->userSession->getUser());
-			$return['settings']['hasSignatureFile'] = $this->account->hasSignatureFile($uid);
+			$return['settings'] = array_merge(
+				$return['settings'],
+				$this->account->getSettings($this->userSession->getUser())
+			);
 		}
 		return new JSONResponse($return, $statusCode);
 	}
@@ -134,7 +139,6 @@ class LibresignController extends Controller {
 	/**
 	 * @NoAdminRequired
 	 * @NoCSRFRequired
-	 * @PublicPage
 	 */
 	public function list($page = null, $limit = null) {
 		$return = $this->account->list($this->userSession->getUser(), $page, $limit);

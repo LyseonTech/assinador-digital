@@ -26,69 +26,95 @@
 		<div id="container">
 			<div class="bg">
 				<form>
-					<Avatar id="avatar" :user="email.length ? email : 'User'" :size="sizeAvatar" />
-					<div class="group">
-						<input
-							v-model="email"
-							v-tooltip.top="{
-								content: t('libresign', 'Enter your email.'),
-								show: tooltip.name,
-								trigger: 'false',
-							}"
-							type="email"
-							:required="validator.name"
-							:placeholder="t('libresign', 'Email')"
-							@focus="tooltip.nameFocus = true; tooltip.name = false"
-							@blur="tooltip.nameFocus = false; validationName()">
-					</div>
-					<div class="group">
-						<input
-							v-model="pass"
-							v-tooltip.bottom="{
-								content: t('libresign', 'Password must be at least 3 characters.'),
-								show: tooltip.pass,
-								trigger: 'false'
-							}"
-							type="password"
-							:required="validator.pass"
-							:placeholder="t('libresign', 'Password')"
-							@focus="tooltip.passFocus = true; tooltip.pass = false"
-							@blur="tooltip.passFocus = false; validationPass()">
-					</div>
-					<div class="group">
-						<input
-							v-model="passConfirm"
-							v-tooltip.bottom="{
-								content: t('libresign', 'Passwords do not match'),
-								show: tooltip.passConfirm,
-								trigger: 'false'
-							}"
-							type="password"
-							:required="validator.passConfirm"
-							:placeholder="t('libresign', 'Confirm password')"
-							@focus="tooltip.passConfirmFocus = true; tooltip.passConfirm = false"
-							@blur="tooltip.passConfirmFocus = false; validationPasswords()">
+					<Avatar id="avatar"
+						:is-guest="true"
+						:disable-menu="true"
+						:user="email.length ? email : ''"
+						:size="sizeAvatar" />
+
+					<div v-show="!passwordSign" class="form-account">
+						<h2>{{ t('libresign', 'You need to create an account with the same email you received the invitation') }}</h2>
+
+						<div class="group">
+							<input
+								v-model="email"
+								v-tooltip.top="{
+									content: t('libresign', 'The email entered is not the same as the email in the invitation'),
+									show: tooltip.email,
+									trigger: 'false'
+								}"
+								type="email"
+								:required="validator.name"
+								:placeholder="t('libresign', 'Email')"
+								@focus="tooltip.nameFocus = true; tooltip.name = false"
+								@blur="tooltip.nameFocus = false; validationName()">
+						</div>
+						<div v-show="!passwordSign" class="group">
+							<input
+								v-model="pass"
+								v-tooltip.bottom="{
+									content: t('libresign', 'Password must be at least 3 characters.'),
+									show: tooltip.pass,
+									trigger: 'false'
+								}"
+								type="password"
+								:required="validator.pass"
+								:placeholder="t('libresign', 'Password')"
+								@focus="tooltip.passFocus = true; tooltip.pass = false"
+								@blur="tooltip.passFocus = false; validationPass()">
+						</div>
+						<div v-show="!passwordSign" class="group">
+							<input
+								v-model="passConfirm"
+								v-tooltip.bottom="{
+									content: t('libresign', 'Passwords do not match'),
+									show: tooltip.passConfirm,
+									trigger: 'false'
+								}"
+								type="password"
+								:required="validator.passConfirm"
+								:placeholder="t('libresign', 'Confirm password')"
+								@focus="tooltip.passConfirmFocus = true; tooltip.passConfirm = false"
+								@blur="tooltip.passConfirmFocus = false; validationPasswords()">
+						</div>
 					</div>
 
-					<div
-						v-tooltip.right="{
-							content: t('libresign', 'Password to confirm signature on the document!'),
-							show: false,
-							trigger: 'hover focus'
-						}"
-						class="group">
-						<input
-							v-model="pfx"
-							type="password"
-							:required="validator.pfx"
-							:placeholder="t('libresign', 'Password for sign document.')">
+					<div v-show="passwordSign" class="form-password">
+						<h2>{{ t('libresign', 'Set a password to sign the document') }}</h2>
+						<div
+							class="group">
+							<input
+								v-model="pfx"
+								type="password"
+								:required="validator.pfx"
+								:placeholder="t('libresign', 'Password for sign document.')">
+						</div>
 					</div>
-					<button ref="btn"
-						:class="hasLoading ? 'btn-load primary loading':'btn'"
-						:disabled="!validator.btn"
-						@click.prevent="createUser">
-						{{ btnRegisterName }}
-					</button>
+
+					<div class="buttons">
+						<button
+							:class="hasLoading ? 'btn-load primary loading':'btn'"
+							:disabled="!passwordSign"
+							@click.prevent="passwordSign = false">
+							{{ t('libresign', 'Return') }}
+						</button>
+
+						<button
+							v-show="!passwordSign"
+							:class="hasLoading ? 'btn-load primary loading':'btn'"
+							:disabled="!validator.back"
+							@click.prevent="passwordSign = true">
+							{{ t('libresign', 'Next') }}
+						</button>
+
+						<button v-show="passwordSign"
+							ref="btn"
+							:class="hasLoading ? 'btn-load primary loading':'btn'"
+							:disabled="!validator.btn"
+							@click.prevent="createUser">
+							{{ btnRegisterName }}
+						</button>
+					</div>
 				</form>
 			</div>
 		</div>
@@ -96,6 +122,8 @@
 </template>
 
 <script>
+import md5 from 'crypto-js/md5'
+import { loadState } from '@nextcloud/initial-state'
 import axios from '@nextcloud/axios'
 import { translate as t } from '@nextcloud/l10n'
 import Content from '@nextcloud/vue/dist/Components/Content'
@@ -119,22 +147,25 @@ export default {
 
 	data() {
 		return {
-			btnRegisterName: t('libresign', 'Register'),
+			btnRegisterName: t('libresign', 'Create an account'),
 			hasLoading: false,
 			email: '',
 			pass: '',
 			passConfirm: '',
 			pfx: '',
 			sizeAvatar: 100,
+			passwordSign: false,
 			validator: {
 				name: false,
 				pass: false,
 				passConfirm: false,
 				pfx: false,
 				btn: false,
+				back: false,
 			},
 			tooltip: {
 				name: false,
+				email: false,
 				nameFocus: false,
 				pass: false,
 				passFocus: false,
@@ -142,7 +173,13 @@ export default {
 				passConfirmFocus: false,
 
 			},
+			initial: null,
 		}
+	},
+	computed: {
+		isEqualEmail() {
+			return this.initial.settings.accountHash === md5(this.email).toString()
+		},
 	},
 	watch: {
 		email() {
@@ -157,16 +194,18 @@ export default {
 		passConfirm() {
 			this.validationPassConfirm()
 			this.validationPasswords()
-			this.validationBtn()
+			this.validatorback()
 		},
 		pfx() {
 			this.validationPfx()
 			this.validationBtn()
 		},
 	},
+
 	created() {
 		this.changeSizeAvatar()
 		showError(t('libresign', this.messageToast))
+		this.initial = JSON.parse(loadState('libresign', 'config'))
 	},
 
 	methods: {
@@ -186,12 +225,12 @@ export default {
 				this.hasLoading = false
 			}
 		},
-
 		changeSizeAvatar() {
 			screen.width >= 534 ? this.sizeAvatar = 150 : this.sizeAvatar = 100
 		},
-
 		validationName() {
+			this.isEqualEmail === false ? this.tooltip.email = true : this.tooltip.email = false
+
 			if (this.email.length < 3) {
 				this.validator.name = true
 				if (this.tooltip.nameFocus === false) {
@@ -252,6 +291,17 @@ export default {
 			} else {
 				this.validator.pass = false
 				this.validator.passConfirm = false
+			}
+		},
+		validatorback() {
+			if (this.validator.name === false && this.validator.passConfirm === false) {
+				if (this.email.length > 2 && this.passConfirm.length > 2) {
+					this.validator.back = true
+				} else {
+					this.validator.back = false
+				}
+			} else {
+				this.validator.back = false
 			}
 		},
 		validationBtn() {

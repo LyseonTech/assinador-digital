@@ -515,9 +515,9 @@ final class AccountServiceTest extends \OCA\Libresign\Tests\Unit\TestCase {
 	}
 
 	/**
-	 * @dataProvider providerTestGetConfigWithInvalidUuuid
+	 * @dataProvider providerTestGetConfigWithInvalidUuid
 	 */
-	public function testGetConfigWithInvalidUuuid($uuid, $userId, $formatOfPdfOnSign, $expected, $setUp) {
+	public function testGetConfigWithInvalidUuid($uuid, $userId, $formatOfPdfOnSign, $expected, $setUp) {
 		if (is_callable($setUp)) {
 			$setUp($this);
 		}
@@ -547,9 +547,9 @@ final class AccountServiceTest extends \OCA\Libresign\Tests\Unit\TestCase {
 		);
 	}
 
-	public function providerTestGetConfigWithInvalidUuuid() {
+	public function providerTestGetConfigWithInvalidUuid() {
 		return [
-			[ // #0
+			[ #0
 				null, null, 'filetype',
 				[
 					'settings' => [
@@ -557,7 +557,7 @@ final class AccountServiceTest extends \OCA\Libresign\Tests\Unit\TestCase {
 					]
 				], null
 			],
-			[ // #1
+			[ #1
 				'uuid', 'userid', 'filetype',
 				[
 					'action' => JSActions::ACTION_DO_NOTHING,
@@ -569,16 +569,32 @@ final class AccountServiceTest extends \OCA\Libresign\Tests\Unit\TestCase {
 					]
 				], null
 			],
-			[ // #2
+			[ #2
 				'uuid', null, 'filetype',
 				[
 					'action' => JSActions::ACTION_CREATE_USER,
 					'settings' => [
-						'hasSignatureFile' => false
+						'hasSignatureFile' => false,
+						'accountHash' => md5('valid@test.coop')
 					]
-				], null
+				], function ($self) {
+					$fileUser = $self->createMock(FileUser::class);
+					$fileUser
+						->method('__call')
+						->withConsecutive(
+							[$this->equalTo('getUserId')],
+							[$this->equalTo('getEmail')]
+						)
+						->will($this->returnValueMap([
+							['getUserId', [], null],
+							['getEmail', [], 'valid@test.coop']
+						]));
+					$self->fileUserMapper
+						->method('getByUuid')
+						->will($self->returnValue($fileUser));
+				}
 			],
-			[ // #3
+			[ #3
 				'uuid', 'username', 'filetype',
 				[
 					'action' => JSActions::ACTION_DO_NOTHING,
@@ -592,7 +608,7 @@ final class AccountServiceTest extends \OCA\Libresign\Tests\Unit\TestCase {
 					$self->createUser('username', 'password');
 				}
 			],
-			[ // #4
+			[ #4
 				'uuid', null, 'filetype',
 				[
 					'action' => JSActions::ACTION_DO_NOTHING,
@@ -610,7 +626,7 @@ final class AccountServiceTest extends \OCA\Libresign\Tests\Unit\TestCase {
 						}));
 				}
 			],
-			[ // #5
+			[ #5
 				'uuid', null, 'filetype',
 				[
 					'action' => JSActions::ACTION_REDIRECT,
@@ -644,7 +660,7 @@ final class AccountServiceTest extends \OCA\Libresign\Tests\Unit\TestCase {
 						->willReturn(true);
 				}
 			],
-			[ // #6
+			[ #6
 				'uuid', null, 'filetype',
 				[
 					'action' => JSActions::ACTION_SHOW_ERROR,
@@ -671,7 +687,7 @@ final class AccountServiceTest extends \OCA\Libresign\Tests\Unit\TestCase {
 						->will($self->returnValue($fileUser));
 				}
 			],
-			[ // #7
+			[ #7
 				'uuid', null, 'filetype',
 				[
 					'action' => JSActions::ACTION_REDIRECT,
@@ -699,7 +715,7 @@ final class AccountServiceTest extends \OCA\Libresign\Tests\Unit\TestCase {
 						->will($self->returnValue($fileUser));
 				}
 			],
-			[ // #8
+			[ #8
 				'uuid', 'username', 'filetype',
 				[
 					'action' => JSActions::ACTION_DO_NOTHING,
@@ -726,7 +742,7 @@ final class AccountServiceTest extends \OCA\Libresign\Tests\Unit\TestCase {
 						->will($self->returnValue($fileUser));
 				}
 			],
-			[ // #9
+			[ #9
 				'uuid', 'username', 'filetype',
 				[
 					'action' => JSActions::ACTION_DO_NOTHING,
@@ -767,7 +783,7 @@ final class AccountServiceTest extends \OCA\Libresign\Tests\Unit\TestCase {
 						->willReturn($folder);
 				}
 			],
-			[ // #10
+			[ #10
 				null, 'username', 'filetype',
 				[
 					'settings' => [
@@ -777,7 +793,7 @@ final class AccountServiceTest extends \OCA\Libresign\Tests\Unit\TestCase {
 					$self->createUser('username', 'password');
 				}
 			],
-			[ // #11
+			[ #11
 				'uuid', 'username', 'base64',
 				[
 					'action' => JSActions::ACTION_SIGN,
@@ -827,7 +843,7 @@ final class AccountServiceTest extends \OCA\Libresign\Tests\Unit\TestCase {
 						->willReturn($folder);
 				}
 			],
-			[ // #12
+			[ #12
 				'uuid', 'username', 'url',
 				[
 					'action' => JSActions::ACTION_SIGN,
@@ -876,7 +892,7 @@ final class AccountServiceTest extends \OCA\Libresign\Tests\Unit\TestCase {
 						->willReturn($folder);
 				}
 			],
-			[ // #13
+			[ #13
 				'uuid', 'username', 'file',
 				[
 					'action' => JSActions::ACTION_SIGN,
@@ -926,7 +942,7 @@ final class AccountServiceTest extends \OCA\Libresign\Tests\Unit\TestCase {
 						->willReturn($folder);
 				}
 			],
-			[ // #14
+			[ #14
 				'uuid', 'username', 'nodeId',
 				[
 					'action' => JSActions::ACTION_SIGN,

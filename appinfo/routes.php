@@ -26,9 +26,11 @@ return [
 		['name' => 'signFile#signUsingUuid',          'url' => '/api/0.1/sign/uuid/{uuid}', 'verb' => 'POST'],
 		['name' => 'signFile#signUsingFileid',        'url' => '/api/0.1/sign/file_id/{fileId}', 'verb' => 'POST'],
 
-		['name' => 'libresign#list',                  'url' => '/api/0.1/file/list', 'verb' => 'GET'],
-		['name' => 'libresign#validateUuid',          'url' => '/api/0.1/file/validate/uuid/{uuid}', 'verb' => 'GET'],
-		['name' => 'libresign#validateFileId',        'url' => '/api/0.1/file/validate/file_id/{fileId}', 'verb' => 'GET'],
+		['name' => 'libreSignFile#list',              'url' => '/api/0.1/file/list', 'verb' => 'GET'],
+		['name' => 'libreSignFile#validateUuid',      'url' => '/api/0.1/file/validate/uuid/{uuid}', 'verb' => 'GET'],
+		['name' => 'libreSignFile#validateFileId',    'url' => '/api/0.1/file/validate/file_id/{fileId}', 'verb' => 'GET'],
+
+		['name' => 'notify#signers',                  'url' => '/api/0.1/notify/signers', 'verb' => 'POST'],
 
 		// Deprecated
 		['name' => 'settingDeprecated#hasRootCert',   'url' => '/api/0.1/signature/has-root-cert', 'verb' => 'GET'],

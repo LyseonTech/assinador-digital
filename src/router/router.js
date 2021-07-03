@@ -66,6 +66,7 @@ const routes = [
 		path: '/success',
 		component: () => import('../views/DefaultPageSuccess'),
 		name: 'DefaultPageSuccess',
+		props: true,
 	}, {
 		path: '/reset-password',
 		component: () => import('../views/ResetPassword'),

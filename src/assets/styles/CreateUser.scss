@@ -61,6 +61,7 @@ input {
 	display: flex;
 	align-items: center;
 	justify-content: center;
+	width: 100%;
 }
 
 .btn{
@@ -166,4 +167,49 @@ input {
 	input{
 		max-width: 317px;
 	}
+}
+
+.form-account{
+	display: flex;
+	flex-direction: column;
+	justify-content: center;
+	align-items: center;
+	width: 100%;
+
+	span{
+		font-size: 1rem;
+	}
+
+	h2{
+		font-size: 1rem;
+		line-height: 20px;
+		font-weight: normal;
+		text-align: justify;
+	}
+
+	div{
+		width: 100%;
+	}
+}
+
+.form-password{
+	display: flex;
+	flex-direction: column;
+	justify-content: center;
+	align-items: center;
+	text-align: justify;
+
+
+	h2{
+		font-size: 1rem;
+		line-height: 20px;
+		font-weight: normal;
+		text-align: justify;
+	}
+}
+
+.buttons {
+	display: flex;
+	flex-direction: row;
+	justify-content: space-between;
 }

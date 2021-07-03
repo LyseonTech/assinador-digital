@@ -2,7 +2,6 @@
 
 namespace OCA\Libresign\Service;
 
-use OCA\Libresign\AppInfo\Application;
 use OCA\Libresign\Db\File as FileEntity;
 use OCA\Libresign\Db\FileMapper;
 use OCA\Libresign\Db\FileUser as FileUserEntity;
@@ -17,7 +16,6 @@ use OCP\Files\IRootFolder;
 use OCP\Http\Client\IClientService;
 use OCP\Http\Client\IResponse;
 use OCP\IConfig;
-use OCP\IGroupManager;
 use OCP\IL10N;
 use OCP\IUserManager;
 use Psr\Log\LoggerInterface;
@@ -29,12 +27,8 @@ use setasign\Fpdi\PdfParser\PdfParserException;
 class SignFileService {
 	/** @var FileEntity */
 	private $file;
-	/** @var FileUserEntity[] */
-	private $signatures;
 	/** @var IConfig */
 	private $config;
-	/** @var IGroupManager */
-	private $groupManager;
 	/** @var IL10N */
 	private $l10n;
 	/** @var FileMapper */
@@ -62,7 +56,6 @@ class SignFileService {
 
 	public function __construct(
 		IConfig $config,
-		IGroupManager $groupManager,
 		IL10N $l10n,
 		FileMapper $fileMapper,
 		FileUserMapper $fileUserMapper,
@@ -77,7 +70,6 @@ class SignFileService {
 		IRootFolder $root
 	) {
 		$this->config = $config;
-		$this->groupManager = $groupManager;
 		$this->l10n = $l10n;
 		$this->fileMapper = $fileMapper;
 		$this->fileUserMapper = $fileUserMapper;
@@ -278,13 +270,13 @@ class SignFileService {
 			$userToSign = $this->userManager->getByEmail($user['email']);
 			if ($userToSign) {
 				$fileUser->setUserId($userToSign[0]->getUID());
-				if (empty($user['display_name'])) {
-					$user['display_name'] = $userToSign[0]->getDisplayName();
+				if (empty($user['displayName'])) {
+					$user['displayName'] = $userToSign[0]->getDisplayName();
 				}
 			}
 		}
-		if (!empty($user['display_name'])) {
-			$fileUser->setDisplayName($user['display_name']);
+		if (!empty($user['displayName'])) {
+			$fileUser->setDisplayName($user['displayName']);
 		}
 		if (!$fileUser->getId()) {
 			$fileUser->setCreatedAt(time());
@@ -293,29 +285,22 @@ class SignFileService {
 
 	public function validate(array $data) {
 		$this->validateUserManager($data);
-		$this->validateFile($data);
+		$this->validateNewFile($data);
 		$this->validateUsers($data);
 	}
 
-	public function validateUserManager($user) {
+	public function validateUserManager(array $user) {
 		if (!isset($user['userManager'])) {
 			throw new \Exception($this->l10n->t('You are not allowed to request signing'), Http::STATUS_UNPROCESSABLE_ENTITY);
 		}
-		$authorized = json_decode($this->config->getAppValue(Application::APP_ID, 'webhook_authorized', '["admin"]'));
-		if (empty($authorized) || !is_array($authorized)) {
-			throw new \Exception($this->l10n->t('You are not allowed to request signing'), Http::STATUS_UNPROCESSABLE_ENTITY);
-		}
-		$userGroups = $this->groupManager->getUserGroupIds($user['userManager']);
-		if (!array_intersect($userGroups, $authorized)) {
-			throw new \Exception($this->l10n->t('You are not allowed to request signing'), Http::STATUS_UNPROCESSABLE_ENTITY);
-		}
+		$this->validateHelper->canRequestSign($user['userManager']);
 	}
 
-	public function validateFile(array $data) {
+	public function validateNewFile(array $data) {
 		if (empty($data['name'])) {
 			throw new \Exception($this->l10n->t('Name is mandatory'));
 		}
-		$this->validateHelper->validateFile($data);
+		$this->validateHelper->validateNewFile($data);
 	}
 
 	public function validateFileUuid(array $data) {
@@ -335,30 +320,12 @@ class SignFileService {
 		}
 		$emails = [];
 		foreach ($data['users'] as $index => $user) {
-			$this->validateUser($user, $index);
+			$this->validateHelper->haveValidMail($user);
 			$emails[$index] = strtolower($user['email']);
 		}
 		$uniques = array_unique($emails);
 		if (count($emails) > count($uniques)) {
 			throw new \Exception($this->l10n->t('Remove duplicated users, email address need to be unique'));
-		}
-	}
-
-	private function validateUser($user, $index) {
-		if (!is_array($user)) {
-			throw new \Exception($this->l10n->t('User data needs to be an array: user of position %s in list', [$index]));
-		}
-		if (!$user) {
-			throw new \Exception($this->l10n->t('User data needs to be an array with values: user of position %s in list', [$index]));
-		}
-		if (!empty($user['email']) && !filter_var($user['email'], FILTER_VALIDATE_EMAIL)) {
-			throw new \Exception($this->l10n->t('Invalid email: user %s', [$index]));
-		}
-		if (empty($user['email'])) {
-			if (!empty($user['name'])) {
-				$index = $user['name'];
-			}
-			throw new \Exception($this->l10n->t('User %s needs an email address', [$index]));
 		}
 	}
 
@@ -368,7 +335,7 @@ class SignFileService {
 	 * @param array $data
 	 */
 	public function canDeleteSignRequest(array $data) {
-		$signatures = $this->getSignaturesByFileUuid($data['uuid']);
+		$signatures = $this->fileUserMapper->getByFileUuid($data['uuid']);
 		$signed = array_filter($signatures, fn ($s) => $s->getSigned());
 		if ($signed) {
 			throw new \Exception($this->l10n->t('Document already signed'));
@@ -382,7 +349,7 @@ class SignFileService {
 	}
 
 	public function deleteSignRequest(array $data): array {
-		$signatures = $this->getSignaturesByFileUuid($data['uuid']);
+		$signatures = $this->fileUserMapper->getByFileUuid($data['uuid']);
 		$fileData = $this->getFileByUuid($data['uuid']);
 		$deletedUsers = [];
 		foreach ($data['users'] as $key => $signer) {
@@ -402,20 +369,6 @@ class SignFileService {
 			$this->fileMapper->delete($file);
 		}
 		return $deletedUsers;
-	}
-
-	/**
-	 * Get all signatures by file UUID
-	 *
-	 * @param string $uuid
-	 * @return FileUserEntity[]
-	 */
-	private function getSignaturesByFileUuid(string $uuid): array {
-		if (!$this->signatures) {
-			$file = $this->getFileByUuid($uuid);
-			$this->signatures = $this->fileUserMapper->getByFileId($file->getId());
-		}
-		return $this->signatures;
 	}
 
 	public function notifyCallback(string $uri, string $uuid, File $file): IResponse {

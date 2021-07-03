@@ -101,7 +101,7 @@ export default {
 				this.clear()
 				return showSuccess(response.data.message)
 			} catch (err) {
-				showError(err.response.data.errors)
+				showError(err.response.data.message)
 			}
 		},
 		clear() {

@@ -23,7 +23,10 @@
 			:name="t('libresign', 'Sign')"
 			icon="icon-rename"
 			:order="2">
-			<Sign ref="sign" :has-loading="loading" @sign:document="emitSign" />
+			<Sign ref="sign"
+				:pfx="getHasPfx"
+				:has-loading="loading"
+				@sign:document="emitSign" />
 		</AppSidebarTab>
 	</AppSidebar>
 </template>
@@ -62,8 +65,8 @@ export default {
 		},
 		subTitle() {
 			return t('libresign', 'Requested by {name}, at {date}', {
-				name: this.getCurrentFile.file.requested_by.display_name
-					? this.getCurrentFile.file.requested_by.display_name
+				name: this.getCurrentFile.file.requested_by.uid
+					? this.getCurrentFile.file.requested_by.uid
 					: '',
 				date: format(new Date(this.getCurrentFile.file.request_date), 'dd/MM/yyyy'),
 			})
@@ -77,7 +80,7 @@ export default {
 			currentFile: state => state.currentFile,
 			sidebar: state => state.sidebar,
 		}),
-		...mapGetters(['getCurrentFile', 'getSidebar']),
+		...mapGetters(['getCurrentFile', 'getSidebar', 'getHasPfx']),
 	},
 	methods: {
 		closeSidebar() {

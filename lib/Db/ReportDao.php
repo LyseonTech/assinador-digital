@@ -102,7 +102,7 @@ class ReportDao {
 					$data = [
 						'email' => $signer->getEmail(),
 						'description' => $signer->getDescription(),
-						'display_name' => $signer->getDisplayName(),
+						'displayName' => $signer->getDisplayName(),
 						'request_sign_date' => (new \DateTime())
 							->setTimestamp($signer->getCreatedAt())
 							->format('Y-m-d H:i:s'),
@@ -137,7 +137,7 @@ class ReportDao {
 		$row['id'] = (int) $row['id'];
 		$row['requested_by'] = [
 			'uid' => $row['requested_by_uid'],
-			'display_name' => $row['requested_by_dislpayname']
+			'displayName' => $row['requested_by_dislpayname']
 		];
 		$row['request_date'] = (new \DateTime())
 			->setTimestamp($row['request_date'])

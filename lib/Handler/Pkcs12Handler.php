@@ -2,10 +2,12 @@
 
 namespace OCA\Libresign\Handler;
 
-use Endroid\QrCode\Bacon\MatrixFactory;
+use BaconQrCode\Encoder\Encoder;
+use Endroid\QrCode\Bacon\ErrorCorrectionLevelConverter;
 use Endroid\QrCode\Color\Color;
 use Endroid\QrCode\Encoding\Encoding;
 use Endroid\QrCode\ErrorCorrectionLevel\ErrorCorrectionLevelLow;
+use Endroid\QrCode\Matrix\Matrix;
 use Endroid\QrCode\QrCode;
 use Endroid\QrCode\RoundBlockSizeMode\RoundBlockSizeModeMargin;
 use OCA\Libresign\AppInfo\Application;
@@ -28,6 +30,9 @@ class Pkcs12Handler {
 	private $config;
 	/** @var IL10N */
 	private $l10n;
+	/** @var QrCode */
+	private $qrCode;
+	private const MIN_QRCODE_SIZE = 20;
 
 	public function __construct(
 		FolderService $folderService,
@@ -84,6 +89,10 @@ class Pkcs12Handler {
 	}
 
 	public function writeFooter(File $file, string $uuid) {
+		$add_footer = $this->config->getAppValue(Application::APP_ID, 'add_footer');
+		if (!$add_footer) {
+			return;
+		}
 		$validation_site = $this->config->getAppValue(Application::APP_ID, 'validation_site');
 		if (!$validation_site) {
 			return;
@@ -97,12 +106,16 @@ class Pkcs12Handler {
 
 			$pdf->AddPage();
 			$pdf->useTemplate($templateId, ['adjustPageSize' => true]);
-			$this->writeQrCode($validation_site, $pdf);
-
 			$pdf->SetFont('Helvetica');
 			$pdf->SetFontSize(8);
 			$pdf->SetAutoPageBreak(false);
-			$pdf->SetXY(5 + 30, -10);
+
+			$x = 10;
+			if ($this->config->getAppValue(Application::APP_ID, 'write_qrcode_on_footer')) {
+				$this->writeQrCode($validation_site, $pdf);
+				$x += $this->qrCode->getSize();
+			}
+			$pdf->SetXY($x, -10);
 
 			$pdf->Write(8, iconv('UTF-8', 'windows-1252', $this->l10n->t(
 				'Digital signed by LibreSign. Validate in %s',
@@ -114,32 +127,32 @@ class Pkcs12Handler {
 	}
 
 	private function writeQrCode(string $text, Fpdi $fpdf) {
-		$qrCode = QrCode::create($text)
+		$this->qrCode = QrCode::create($text)
 			->setEncoding(new Encoding('UTF-8'))
 			->setErrorCorrectionLevel(new ErrorCorrectionLevelLow())
-			->setSize(30)
-			->setMargin(0)
+			->setMargin(5)
 			->setRoundBlockSizeMode(new RoundBlockSizeModeMargin())
 			->setForegroundColor(new Color(0, 0, 0))
 			->setBackgroundColor(new Color(255, 255, 255));
 
-		$matrixFactory = new MatrixFactory();
-		$matrix = $matrixFactory->create($qrCode);
+		$blockValues = $this->getQrCodeBlocks();
+		$this->setQrCodeSize($blockValues);
+		$matrix = new Matrix($blockValues, $this->qrCode->getSize(), $this->qrCode->getMargin(), $this->qrCode->getRoundBlockSizeMode());
 
-		$backgroundColor = $qrCode->getBackgroundColor();
-		$foregroundColor = $qrCode->getForegroundColor();
+		$backgroundColor = $this->qrCode->getBackgroundColor();
+		$foregroundColor = $this->qrCode->getForegroundColor();
 
 		$fpdf->SetFillColor($backgroundColor->getRed(), $backgroundColor->getGreen(), $backgroundColor->getBlue());
 		$backgroundBottonPosition = $fpdf->GetPageHeight() - $matrix->getOuterSize();
 		$fpdf->Rect(0, $backgroundBottonPosition, $matrix->getOuterSize(), $matrix->getOuterSize(), 'F');
 		$fpdf->SetFillColor($foregroundColor->getRed(), $foregroundColor->getGreen(), $foregroundColor->getBlue());
 
-		$qrCodeBottonPosition = $fpdf->GetPageHeight() - $matrix->getOuterSize() + $matrix->getMarginLeft() + 0.5;
+		$qrCodeBottonPosition = $fpdf->GetPageHeight() - $matrix->getOuterSize() + $matrix->getMarginLeft();
 		for ($rowIndex = 0; $rowIndex < $matrix->getBlockCount(); ++$rowIndex) {
 			for ($columnIndex = 0; $columnIndex < $matrix->getBlockCount(); ++$columnIndex) {
 				if (1 === $matrix->getBlockValue($rowIndex, $columnIndex)) {
 					$fpdf->Rect(
-						$matrix->getMarginLeft() + ($columnIndex * $matrix->getBlockSize()) + 0.5,
+						$matrix->getMarginLeft() + ($columnIndex * $matrix->getBlockSize()),
 						$qrCodeBottonPosition + ($rowIndex * $matrix->getBlockSize()),
 						$matrix->getBlockSize(),
 						$matrix->getBlockSize(),
@@ -148,5 +161,29 @@ class Pkcs12Handler {
 				}
 			}
 		}
+	}
+
+	private function setQrCodeSize(array $blockValues) {
+		$this->qrCode->setSize(self::MIN_QRCODE_SIZE);
+		$blockSize = $this->qrCode->getSize() / count($blockValues);
+		if ($blockSize < 1) {
+			$this->qrCode->setSize(count($blockValues));
+		}
+	}
+
+	private function getQrCodeBlocks(): array {
+		$baconErrorCorrectionLevel = ErrorCorrectionLevelConverter::convertToBaconErrorCorrectionLevel($this->qrCode->getErrorCorrectionLevel());
+		$baconMatrix = Encoder::encode($this->qrCode->getData(), $baconErrorCorrectionLevel, strval($this->qrCode->getEncoding()))->getMatrix();
+
+		$blockValues = [];
+		$columnCount = $baconMatrix->getWidth();
+		$rowCount = $baconMatrix->getHeight();
+		for ($rowIndex = 0; $rowIndex < $rowCount; ++$rowIndex) {
+			$blockValues[$rowIndex] = [];
+			for ($columnIndex = 0; $columnIndex < $columnCount; ++$columnIndex) {
+				$blockValues[$rowIndex][$columnIndex] = $baconMatrix->get($columnIndex, $rowIndex);
+			}
+		}
+		return $blockValues;
 	}
 }

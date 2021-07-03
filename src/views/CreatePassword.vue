@@ -38,6 +38,7 @@ export default {
 			modal: false,
 			hasLoading: false,
 			password: '',
+			hasPfx: false,
 		}
 	},
 	methods: {

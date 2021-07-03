@@ -9,7 +9,7 @@
 			ref="input"
 			class="input"
 			:type="'password'"
-			:disabled="!hasPfx"
+			:disabled="disabledButton"
 			:loading="hasLoading"
 			@submit="sign" />
 		<a class="forgot-sign" @click="handleModal(true)">
@@ -17,25 +17,25 @@
 		</a>
 		<EmptyContent class="emp-content">
 			<template #desc>
-				<p v-if="hasPfx">
+				<p v-if="havePfx">
 					{{ t('libresign', 'Enter your password to sign this document') }}
 				</p>
 				<p v-else>
 					{{
 						t('libresign',
-							'You need to create a password to sign this document, click "Create password to sign document" and create a password')
+							'You need to create a password to sign this document. Click "Create password to sign document" and create a password.')
 					}}
 				</p>
 			</template>
 			<template #icon>
-				<img v-if="hasPfx" :src="icon">
+				<img v-if="havePfx" :src="icon">
 				<div v-else class="icon icon-rename" />
 			</template>
 		</EmptyContent>
 		<slot name="actions" />
 		<Modal v-if="modal" size="large" @close="handleModal(false)">
-			<ResetPassword v-if="hasPfx" @close="handleModal(false)" />
-			<CreatePassword v-if="!hasPfx" @close="handleModal(false)" />
+			<ResetPassword v-if="havePfx" @close="handleModal(false)" />
+			<CreatePassword v-if="!havePfx" @close="handleModal(false)" />
 		</Modal>
 	</div>
 </template>
@@ -49,7 +49,6 @@ import EmptyContent from '@nextcloud/vue/dist/Components/EmptyContent'
 import InputAction from '../InputAction'
 import Icon from '../../assets/images/signed-icon.svg'
 import { getCurrentUser } from '@nextcloud/auth'
-import { mapState } from 'vuex'
 
 export default {
 	name: 'Sign',
@@ -71,6 +70,11 @@ export default {
 			required: false,
 			default: false,
 		},
+		pfx: {
+			type: Boolean,
+			required: false,
+			default: false,
+		},
 	},
 	data() {
 		return {
@@ -82,18 +86,28 @@ export default {
 		userName() {
 			return getCurrentUser().uid
 		},
-		messageForgot() {
-			return this.hasPfx ? t('libresign', 'Forgot your password?') : t('libresign', 'Create password to sign document')
+		havePfx() {
+			return this.pfx ? this.pfx : false
 		},
-		...mapState({
-			hasPfx: state => state.settings.data.settings.hasSignatureFile,
-		}),
+		messageForgot() {
+			return this.havePfx ? t('libresign', 'Forgot your password?') : t('libresign', 'Create password to sign document')
+		},
+		disabledButton() {
+			if (this.havePfx) {
+				if (this.hasLoading) {
+					return true
+				}
+				return false
+			}
+			return true
+		},
 	},
 	methods: {
 		clearInput() {
 			this.$refs.input.clearInput()
 		},
 		sign(param) {
+			this.clearInput()
 			this.$emit('sign:document', param)
 		},
 		handleModal(state) {

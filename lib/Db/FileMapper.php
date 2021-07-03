@@ -18,6 +18,8 @@ use OCP\IDBConnection;
  * @method File delete(File $entity)
  */
 class FileMapper extends QBMapper {
+	/** @var FileUserEntity[] */
+	private $signatures;
 
 	/**
 	 * @param IDBConnection $db

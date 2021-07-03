@@ -190,7 +190,11 @@ class AccountController extends ApiController {
 		}
 		return new JSONResponse(
 			[
-				'uid' => $user->getUID()
+				'account' => [
+					'uid' => $user->getUID(),
+					'displayName' => $user->getDisplayName()
+				],
+				'settings' => $this->account->getSettings($this->userSession->getUser())
 			],
 			Http::STATUS_OK
 		);

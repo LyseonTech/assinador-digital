@@ -247,7 +247,6 @@ class SignFileController extends ApiController {
 			);
 		} catch (\Throwable $th) {
 			$message = $th->getMessage();
-			$this->logger->error($message);
 			$action = JSActions::ACTION_DO_NOTHING;
 			switch ($message) {
 				case 'Password to sign not defined. Create a password to sign':
@@ -259,6 +258,7 @@ class SignFileController extends ApiController {
 					$message = $this->l10n->t($message);
 					break;
 				default:
+					$this->logger->error($message);
 					$message = $this->l10n->t('Internal error. Contact admin.');
 			}
 			return new JSONResponse(

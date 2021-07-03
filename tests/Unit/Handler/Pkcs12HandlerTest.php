@@ -23,6 +23,9 @@ final class Pkcs12HandlerTest extends \OCA\Libresign\Tests\Unit\TestCase {
 		$this->jSignPdfHandler = $this->createMock(JSignPdfHandler::class);
 		$this->config = $this->createMock(IConfig::class);
 		$this->l10n = $this->createMock(IL10N::class);
+		$this->l10n
+			->method('t')
+			->will($this->returnArgument(0));
 		$this->pkcs12Handler = new Pkcs12Handler(
 			$this->folderService,
 			$this->jSignPdfHandler,
@@ -90,7 +93,13 @@ final class Pkcs12HandlerTest extends \OCA\Libresign\Tests\Unit\TestCase {
 		$this->config = $this->createMock(IConfig::class);
 		$this->config
 			->method('getAppValue')
-			->willReturn('http://test.coop');
+			->willReturnCallback(function ($appid, $key, $default) {
+				switch ($key) {
+					case 'add_footer': return true;
+					case 'validation_site': return 'http://test.coop';
+					case 'write_qrcode_on_footer': return true;
+				}
+			});
 		$this->pkcs12Handler = new Pkcs12Handler(
 			$this->folderService,
 			$this->jSignPdfHandler,

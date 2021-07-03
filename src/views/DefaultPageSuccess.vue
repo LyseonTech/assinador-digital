@@ -24,21 +24,38 @@
 <template>
 	<div id="container">
 		<div id="bg">
-			<h1>{{ title }}</h1>
+			<img :src="logo">
 			<h2>{{ subtitle }}</h2>
+
+			<button class="secondary btn-primary" @click="sendToView">
+				{{ t('libresign', 'See Document Validation') }}
+			</button>
 		</div>
 	</div>
 </template>
 
 <script>
+import icon from '../assets/images/logo-white.png'
 import { translate as t } from '@nextcloud/l10n'
 export default {
 	name: 'DefaultPageSuccess',
+	props: {
+		uuid: {
+			type: String,
+			default: '',
+			required: true,
+		},
+	},
 	data() {
 		return {
-			title: t('libresign', 'LibreSign'),
-			subtitle: t('libresign', 'Congratulations, you have successfully signed the digital document using an Open Source digital signer on Nextcloud.'),
+			logo: icon,
+			subtitle: t('libresign', 'Congratulations you have digitally signed a document using LibreSign'),
 		}
+	},
+	methods: {
+		sendToView() {
+			this.$router.push(`/validation/${this.uuid}`)
+		},
 	},
 }
 </script>
@@ -87,6 +104,12 @@ export default {
 		line-height: normal;
 		width: 40%;
 		text-shadow: 2px 2px 3px rgba(0, 0, 0, 1);
+	}
+
+	button.btn-primary{
+		position: absolute;
+		top: 90%;
+		left: 56px;
 	}
 
 	span{

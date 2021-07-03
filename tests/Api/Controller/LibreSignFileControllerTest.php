@@ -8,7 +8,7 @@ use OCA\Libresign\Tests\Api\ApiTestCase;
  * @internal
  * @group DB
  */
-final class LibresignControllerTest extends ApiTestCase {
+final class LibreSignFileControllerTest extends ApiTestCase {
 	/**
 	 * @runInSeparateProcess
 	 */
@@ -58,7 +58,7 @@ final class LibresignControllerTest extends ApiTestCase {
 
 		$response = $this->assertRequest();
 		$body = json_decode($response->getBody()->getContents(), true);
-		$this->assertFalse($body['signatures'][0]['me'], "It's me");
+		$this->assertFalse($body['signers'][0]['me'], "It's me");
 		$this->assertFalse($body['settings']['canRequestSign'], 'Can permission to request sign');
 		$this->assertFalse($body['settings']['canSign'], 'Can permission to sign');
 	}
@@ -91,7 +91,7 @@ final class LibresignControllerTest extends ApiTestCase {
 
 		$response = $this->assertRequest();
 		$body = json_decode($response->getBody()->getContents(), true);
-		$this->assertTrue($body['signatures'][0]['me'], "It's me");
+		$this->assertTrue($body['signers'][0]['me'], "It's me");
 		$this->assertFalse($body['settings']['canRequestSign'], 'Can permission to request sign');
 		$this->assertTrue($body['settings']['canSign'], 'Can permission to sign');
 	}

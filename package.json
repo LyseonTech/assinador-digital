@@ -27,6 +27,7 @@
     "@nextcloud/paths": "^1.1.2",
     "@nextcloud/router": "^1.2.0",
     "@nextcloud/vue": "^3.9.0",
+    "crypto-js": "^4.0.0",
     "date-fns": "2.21.2",
     "style-loader": "^1.2.1",
     "vue": "^2.6.12",

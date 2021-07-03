@@ -131,6 +131,25 @@ class FileUserMapper extends QBMapper {
 		return $this->findEntities($qb);
 	}
 
+	/**
+	 * Get all signers by File Uuid
+	 *
+	 * @param string $nodeId
+	 * @return FileUser[]
+	 */
+	public function getByFileUuid(string $uuid) {
+		$qb = $this->db->getQueryBuilder();
+
+		$qb->select('fu.*')
+			->from($this->getTableName(), 'fu')
+			->join('fu', 'libresign_file', 'f', 'fu.file_id = f.id')
+			->where(
+				$qb->expr()->eq('f.uuid', $qb->createNamedParameter($uuid, IQueryBuilder::PARAM_STR))
+			);
+
+		return $this->findEntities($qb);
+	}
+
 	public function getByUuidAndUserId(string $uuid, string $userId) {
 		$qb = $this->db->getQueryBuilder();
 
@@ -157,6 +176,22 @@ class FileUserMapper extends QBMapper {
 			)
 			->andWhere(
 				$qb->expr()->eq('fu.user_id', $qb->createNamedParameter($userId, IQueryBuilder::PARAM_STR))
+			);
+
+		return $this->findEntity($qb);
+	}
+
+	public function getByFileIdAndEmail(string $file_id, string $email) {
+		$qb = $this->db->getQueryBuilder();
+
+		$qb->select('fu.*')
+			->from($this->getTableName(), 'fu')
+			->join('fu', 'libresign_file', 'f', 'fu.file_id = f.id')
+			->where(
+				$qb->expr()->eq('f.node_id', $qb->createNamedParameter($file_id, IQueryBuilder::PARAM_STR))
+			)
+			->andWhere(
+				$qb->expr()->eq('fu.email', $qb->createNamedParameter($email, IQueryBuilder::PARAM_STR))
 			);
 
 		return $this->findEntity($qb);

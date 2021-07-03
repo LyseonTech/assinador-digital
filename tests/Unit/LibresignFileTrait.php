@@ -89,7 +89,10 @@ trait LibresignFileTrait {
 					];
 				}
 			}
-			$this->getSignFileService()->deleteSignRequest($toRemove);
+			try {
+				$this->getSignFileService()->deleteSignRequest($toRemove);
+			} catch (\Throwable $th) {
+			}
 		}
 	}
 }

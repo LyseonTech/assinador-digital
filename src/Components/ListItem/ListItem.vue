@@ -1,7 +1,12 @@
 <template>
 	<div class="container">
 		<div id="image">
-			<Avatar id="avatar" :user="user.email" />
+			<Avatar
+				id="avatar"
+				:is-guest="true"
+				:show-user-status="false"
+				:display-name="user.displayName"
+				:user="user.email" />
 		</div>
 		<div id="content">
 			<p class="title">

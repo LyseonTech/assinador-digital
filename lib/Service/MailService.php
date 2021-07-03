@@ -6,7 +6,6 @@ use OCA\Libresign\AppInfo\Application;
 use OCA\Libresign\Db\FileMapper;
 use OCA\Libresign\Db\File;
 use OCA\Libresign\Db\FileUser;
-use OCA\Libresign\Db\FileUserMapper;
 use OCA\Libresign\Exception\LibresignException;
 use OCP\IConfig;
 use OCP\IL10N;
@@ -21,8 +20,6 @@ class MailService {
 	private $mailer;
 	/** @var FileMapper */
 	private $fileMapper;
-	/** @var FileUserMapper */
-	private $fileUserMapper;
 	/** @var IL10N */
 	private $l10n;
 	/** @var IURLGenerator */
@@ -34,7 +31,6 @@ class MailService {
 		LoggerInterface $logger,
 		IMailer $mailer,
 		FileMapper $fileMapper,
-		FileUserMapper $fileUserMapper,
 		IL10N $l10n,
 		IURLGenerator $urlGenerator,
 		IConfig $config
@@ -42,25 +38,9 @@ class MailService {
 		$this->logger = $logger;
 		$this->mailer = $mailer;
 		$this->fileMapper = $fileMapper;
-		$this->fileUserMapper = $fileUserMapper;
 		$this->l10n = $l10n;
 		$this->urlGenerator = $urlGenerator;
 		$this->config = $config;
-	}
-
-	public function notifyAllUnsigned() {
-		$unsigned = $this->fileUserMapper->findUnsigned();
-		if (!$unsigned) {
-			throw new LibresignException('No users to notify', 1);
-		}
-		foreach ($unsigned as $data) {
-			// if ($exists) {
-			// 	$this->notifyUnsignedUser($user);
-			// } else {
-			$this->notifyUnsignedUser($data);
-			// }
-		}
-		return true;
 	}
 
 	/**
@@ -78,7 +58,7 @@ class MailService {
 
 	public function notifySignDataUpdated(FileUser $data) {
 		$emailTemplate = $this->mailer->createEMailTemplate('settings.TestEmail');
-		$emailTemplate->setSubject($this->l10n->t('Changes into a file for you to sign'));
+		$emailTemplate->setSubject($this->l10n->t('LibreSign: Changes into a file for you to sign'));
 		$emailTemplate->addHeader();
 		$emailTemplate->addHeading($this->l10n->t('File to sign'), false);
 		$emailTemplate->addBodyText($this->l10n->t('Changes have been made in a file that you have to sign. Access the link below:'));
@@ -104,11 +84,12 @@ class MailService {
 	}
 
 	public function notifyUnsignedUser(FileUser $data) {
-		if (!$this->config->getAppValue(Application::APP_ID, 'notifyUnsignedUser', true)) {
+		$notifyUnsignedUser = $this->config->getAppValue(Application::APP_ID, 'notifyUnsignedUser', true);
+		if (!$notifyUnsignedUser) {
 			return;
 		}
 		$emailTemplate = $this->mailer->createEMailTemplate('settings.TestEmail');
-		$emailTemplate->setSubject($this->l10n->t('There is a file for you to sign'));
+		$emailTemplate->setSubject($this->l10n->t('LibreSign: There is a file for you to sign'));
 		$emailTemplate->addHeader();
 		$emailTemplate->addHeading($this->l10n->t('File to sign'), false);
 		$emailTemplate->addBodyText($this->l10n->t('There is a document for you to sign. Access the link below:'));
@@ -135,7 +116,7 @@ class MailService {
 
 	public function notifyCancelSign(FileUser $data) {
 		$emailTemplate = $this->mailer->createEMailTemplate('settings.TestEmail');
-		$emailTemplate->setSubject($this->l10n->t('Signature request cancelled'));
+		$emailTemplate->setSubject($this->l10n->t('LibreSign: Signature request cancelled'));
 		$emailTemplate->addHeader();
 		$emailTemplate->addBodyText($this->l10n->t('The signature request has been canceled.'));
 		$message = $this->mailer->createMessage();

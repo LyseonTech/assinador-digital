@@ -4,6 +4,9 @@ namespace OCA\Libresign\Handler;
 
 use OCP\Files\File;
 
+/**
+ * @codeCoverageIgnore
+ */
 class Pkcs7Handler {
 	public function sign(
 		File $fileToSign,

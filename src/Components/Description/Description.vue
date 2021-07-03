@@ -36,9 +36,9 @@
 					}}</label>
 					<div class="form-ib-group">
 						<input id="password" v-model="password" type="password">
-						<router-link class="forgot" to="/reset-password" target="_blank">
-							{{ t('libresign', 'Forgot your password?') }}
-						</router-link>
+						<a class="forgot" @click="handleModal(true)">
+							{{ havePfx ? t('libresign', 'Forgot your password?') : t('libresign', 'Create password to sign document') }}
+						</a>
 						<button
 							type="button"
 							:value="buttonValue"
@@ -50,12 +50,19 @@
 					</div>
 				</div>
 			</form>
+			<Modal v-if="modal" size="large" @close="handleModal(false)">
+				<ResetPassword v-if="havePfx" @close="handleModal(false)" />
+				<CreatePassword v-if="!havePfx" @close="handleModal(false)" />
+			</Modal>
 		</div>
 	</div>
 </template>
 
 <script>
 import { showError, showSuccess } from '@nextcloud/dialogs'
+import Modal from '@nextcloud/vue/dist/Components/Modal'
+import ResetPassword from '../../views/ResetPassword.vue'
+import CreatePassword from '../../views/CreatePassword.vue'
 import axios from '@nextcloud/axios'
 import Image from '../../assets/images/application-pdf.png'
 import { generateUrl } from '@nextcloud/router'
@@ -63,7 +70,11 @@ import { translate as t } from '@nextcloud/l10n'
 
 export default {
 	name: 'Description',
-
+	components: {
+		Modal,
+		ResetPassword,
+		CreatePassword,
+	},
 	props: {
 		pdfName: {
 			type: String,
@@ -91,6 +102,8 @@ export default {
 			password: '',
 			asign: true,
 			buttonValue: t('libresign', 'Sign the document.'),
+			modal: false,
+			havePfx: false,
 		}
 	},
 
@@ -98,6 +111,10 @@ export default {
 		hasSavePossible() {
 			return !!this.password
 		},
+	},
+
+	created() {
+		this.getMe()
 	},
 
 	methods: {
@@ -115,7 +132,7 @@ export default {
 
 				showSuccess(response.data.message)
 				if (response.data.action === 350) {
-					this.$router.push({ name: 'DefaultPageSuccess' })
+					this.$router.push({ name: 'DefaultPageSuccess', uuid: this.uuid })
 				}
 				this.updating = false
 				this.disableButton = true
@@ -124,6 +141,13 @@ export default {
 				this.updating = false
 				this.disableButton = false
 			}
+		},
+		async getMe() {
+			const response = await axios.get(generateUrl('/apps/libresign/api/0.1/account/me'))
+			this.havePfx = response.data.settings.hasSignatureFile
+		},
+		handleModal(status) {
+			this.modal = status
 		},
 	},
 }
