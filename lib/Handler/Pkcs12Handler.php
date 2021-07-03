@@ -102,7 +102,7 @@ class Pkcs12Handler {
 			$pdf->SetFont('Helvetica');
 			$pdf->SetFontSize(8);
 			$pdf->SetAutoPageBreak(false);
-			$pdf->SetXY(5+30, -10);
+			$pdf->SetXY(5 + 30, -10);
 
 			$pdf->Write(8, iconv('UTF-8', 'windows-1252', $this->l10n->t(
 				'Digital signed by LibreSign. Validate in %s',
