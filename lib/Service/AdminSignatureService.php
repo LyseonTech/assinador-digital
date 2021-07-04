@@ -48,6 +48,7 @@ class AdminSignatureService {
 			if ($this->cfsslHandler->health($cfsslUri)) {
 				break;
 			}
+			// @codeCoverageIgnore
 			sleep($i);
 		}
 

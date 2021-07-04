@@ -7,7 +7,8 @@
     "jsignpdf/jsignpdf-php": "^1",
     "setasign/fpdi": "^2.3",
     "setasign/fpdf": "^1.8",
-    "endroid/qr-code": "^4.2"
+    "endroid/qr-code": "^4.2",
+    "pagerfanta/pagerfanta": "^3.2"
   },
   "require-dev": {
     "phpunit/phpunit": "^9.5",

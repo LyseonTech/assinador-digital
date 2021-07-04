@@ -421,18 +421,14 @@ class AccountService {
 		return $return;
 	}
 
-	public function list(IUser $user, $page = null, $limit = 15) {
-		$return = $this->reportDao->getFilesAssociatedFilesWithMeFormatted($user->getUID(), $page, $limit);
+	public function list(IUser $user, $page = null, $length = 15) {
+		$page = $page ?? 1;
+		$length = $length ?? 1;
+		$data = $this->reportDao->getFilesAssociatedFilesWithMeFormatted($user->getUID(), $page, $length);
+		$data['pagination']->setRootPath('/file/list');
 		return [
-			'data' => $return,
-			'pagination' => [
-				'total' => $this->reportDao->getTotalFilesAssociatedFilesWithMe($user->getUID()),
-				'current' => '',
-				'next' => '',
-				'prev' => '',
-				'last' => '',
-				'first' => ''
-			]
+			'data' => $data['data'],
+			'pagination' => $data['pagination']->getPagination($page, $length)
 		];
 	}
 

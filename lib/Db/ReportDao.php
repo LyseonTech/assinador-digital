@@ -2,6 +2,7 @@
 
 namespace OCA\Libresign\Db;
 
+use OCA\Libresign\Helper\Pagination;
 use OCP\DB\QueryBuilder\IQueryBuilder;
 use OCP\IDBConnection;
 use OCP\IURLGenerator;
@@ -25,73 +26,79 @@ class ReportDao {
 		$this->fileUserMapper = $fileUserMapper;
 	}
 
-	public function getTotalFilesAssociatedFilesWithMe($userId) {
-		$stmt = $this->getFilesAssociatedFilesWithMeStmt($userId, true);
-		$row = $stmt->fetch();
-		return (int) $row['total'];
-	}
-
-	public function getFilesAssociatedFilesWithMeFormatted($userId, $page = null, $limit = 15) {
-		$stmt = $this->getFilesAssociatedFilesWithMeStmt($userId);
+	public function getFilesAssociatedFilesWithMeFormatted($userId, $page = null, $length = null) {
+		$pagination = $this->getFilesAssociatedFilesWithMeStmt($userId);
+		$pagination->setMaxPerPage($length);
+		$pagination->setCurrentPage($page);
+		$currentPageResults = $pagination->getCurrentPageResults();
 
 		$url = $this->urlGenerator->linkToRoute('libresign.page.getPdfUser', ['uuid' => '_replace_']);
 		$url = str_replace('_replace_', '', $url);
 
-		$return = [];
+		$data = [];
 		$fileIds = [];
-		while ($row = $stmt->fetch(\PDO::FETCH_ASSOC)) {
+
+		foreach ($currentPageResults as $row) {
 			$fileIds[] = $row['id'];
-			$return[] = $this->formatListRow($row, $url);
+			$data[] = $this->formatListRow($row, $url);
 		}
 		$signers = $this->fileUserMapper->getByMultipleFileId($fileIds);
-		$return = $this->assocFileToFileUserAndFormat($userId, $return, $signers);
+		$return['data'] = $this->assocFileToFileUserAndFormat($userId, $data, $signers);
+		$return['pagination'] = $pagination;
 		return $return;
 	}
 
-	private function getFilesAssociatedFilesWithMeStmt($userId, $count = false) {
+	/**
+	 * @param [type] $userId
+	 * @param boolean $count
+	 * @return Pagination
+	 */
+	private function getFilesAssociatedFilesWithMeStmt($userId, $count = false): Pagination {
 		$qb = $this->db->getQueryBuilder();
-
-		if ($count) {
-			$qb->selectAlias($qb->func()->count(), 'total')
-				->where(
-					$qb->expr()->orX(
-						$qb->expr()->eq('f.user_id', $qb->createNamedParameter($userId, IQueryBuilder::PARAM_STR))
-					)
-				);
-		} else {
-			$qb->select(
-					'f.id',
-					'f.uuid',
-					'f.name',
-					'f.callback',
-					'f.node_id'
+		$qb->select(
+				'f.id',
+				'f.uuid',
+				'f.name',
+				'f.callback',
+				'f.node_id'
+			)
+			->selectAlias('u.uid_lower', 'requested_by_uid')
+			->selectAlias('u.displayname', 'requested_by_dislpayname')
+			->selectAlias('f.created_at', 'request_date')
+			->selectAlias($qb->func()->max('fu.signed'), 'status_date')
+			->from('libresign_file', 'f')
+			->leftJoin('f', 'libresign_file_user', 'fu', 'fu.file_id = f.id')
+			->leftJoin('f', 'users', 'u', 'f.user_id = u.uid')
+			->where(
+				$qb->expr()->orX(
+					$qb->expr()->eq('f.user_id', $qb->createNamedParameter($userId, IQueryBuilder::PARAM_STR)),
+					$qb->expr()->eq('fu.user_id', $qb->createNamedParameter($userId, IQueryBuilder::PARAM_STR))
 				)
-				->selectAlias('u.uid_lower', 'requested_by_uid')
-				->selectAlias('u.displayname', 'requested_by_dislpayname')
-				->selectAlias('f.created_at', 'request_date')
-				->selectAlias($qb->func()->max('fu.signed'), 'status_date')
-				->leftJoin('f', 'users', 'u', 'f.user_id = u.uid')
-				->where(
-					$qb->expr()->orX(
-						$qb->expr()->eq('f.user_id', $qb->createNamedParameter($userId, IQueryBuilder::PARAM_STR)),
-						$qb->expr()->eq('fu.user_id', $qb->createNamedParameter($userId, IQueryBuilder::PARAM_STR))
-					)
-				)
-				->groupBy(
-					'f.id',
-					'f.uuid',
-					'f.name',
-					'f.callback',
-					'f.node_id',
-					'f.created_at',
-					'u.uid_lower',
-					'u.displayname'
-				);
-		}
-		$qb->from('libresign_file', 'f')
-			->leftJoin('f', 'libresign_file_user', 'fu', 'fu.file_id = f.id');
+			)
+			->groupBy(
+				'f.id',
+				'f.uuid',
+				'f.name',
+				'f.callback',
+				'f.node_id',
+				'f.created_at',
+				'u.uid_lower',
+				'u.displayname'
+			);
 
-		return $qb->execute();
+		$countQueryBuilderModifier = function (IQueryBuilder &$qb) use ($userId): void {
+			$count = $qb->getConnection()->getQueryBuilder();
+			$count->selectAlias($count->func()->count(), 'total_results')
+				->from('libresign_file', 'f')
+				->where(
+					$count->expr()->eq('f.user_id', $count->createNamedParameter($userId, IQueryBuilder::PARAM_STR)),
+				)
+				->setMaxResults(1);
+			$qb = $count;
+		};
+
+		$pagination = new Pagination($qb, $countQueryBuilderModifier);
+		return $pagination;
 	}
 
 	private function assocFileToFileUserAndFormat($userId, $files, $signers) {

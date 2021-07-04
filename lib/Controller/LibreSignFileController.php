@@ -140,8 +140,8 @@ class LibreSignFileController extends Controller {
 	 * @NoAdminRequired
 	 * @NoCSRFRequired
 	 */
-	public function list($page = null, $limit = null) {
-		$return = $this->account->list($this->userSession->getUser(), $page, $limit);
+	public function list($page = null, $length = null) {
+		$return = $this->account->list($this->userSession->getUser(), $page, $length);
 		return new JSONResponse($return, Http::STATUS_OK);
 	}
 }

@@ -71,6 +71,7 @@ site:
 		mkdir -p $(site_build_directory) ; \
 		git clone https://github.com/LibreSign/site $(site_build_directory) ; \
 	fi
+	$(MAKE) yarn-init -C $(site_build_directory)
 	$(MAKE) watch-js -C $(site_build_directory)
 
 # Cleaning
