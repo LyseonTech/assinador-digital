@@ -14,7 +14,7 @@ Types of changes:
 
 <!-- changelog-linker -->
 
-## Draft
+## 2.4.2
 
 # Added
 - List of documents
@@ -28,6 +28,7 @@ Types of changes:
 - Added integration with Approval app on README.md. Thanks to @eneiluj
 - Endpoint to list LibreSign files
 - Endpoint to attach files to LibreSign profile
+- Entpoint to list all attached files to LibreSign profile
 - Endpoints to delete signer and file sign request
 - One more step to turn possible replace CFSSL
 - Test for validation of Swagger documentation

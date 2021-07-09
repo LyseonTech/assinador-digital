@@ -12,6 +12,7 @@ return [
 		['name' => 'account#me',                      'url' => '/api/0.1/account/me', 'verb' => 'GET'],
 		['name' => 'account#signatureGenerate',       'url' => '/api/0.1/account/signature', 'verb' => 'POST'],
 		['name' => 'account#addFiles',                'url' => '/api/0.1/account/files', 'verb' => 'POST'],
+		['name' => 'account#approvalList',            'url' => '/api/0.1/account/files/approval/list', 'verb' => 'GET'],
 
 		// Deprecated
 		['name' => 'signFileDeprecated#requestSign',  'url' => '/api/0.1/webhook/register', 'verb' => 'POST'],

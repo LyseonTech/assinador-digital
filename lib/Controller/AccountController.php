@@ -199,4 +199,64 @@ class AccountController extends ApiController {
 			Http::STATUS_OK
 		);
 	}
+
+	/**
+	 * @NoAdminRequired
+	 * @NoCSRFRequired
+	 */
+	public function approvalList() {
+		$json = <<<MOCK
+		{
+			"data": [
+				{
+				"account": {
+					"displayName": "John Doe",
+					"uid": "johndoe"
+				},
+				"files": [
+					{
+					"uuid": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+					"name": "filename",
+					"callback": "http://app.test.coop/callback_webhook",
+					"status": "signed",
+					"status_date": "2021-12-31 22:45:50",
+					"request_date": "2021-12-31 22:45:50",
+					"requested_by": {
+						"displayName": "John Doe",
+						"uid": "johndoe"
+					},
+					"file": {
+						"type": "pdf",
+						"url": "http://cloud.test.coop/apps/libresign/pdf/46d30465-ae11-484b-aad5-327249a1e8ef",
+						"nodeId": 2312
+					},
+					"signers": [
+						{
+						"email": "user@test.coop",
+						"me": true,
+						"displayName": "John Doe",
+						"uid": "johndoe",
+						"description": "As the company's CEO, you must sign this contract",
+						"sign_date": "2021-12-31 22:45:50",
+						"request_sign_date": "2021-12-31 22:45:50"
+						}
+					]
+					}
+				]
+				}
+			],
+			"pagination": {
+				"total": 300,
+				"current": "/file/list?page=2&length=15",
+				"next": "/file/list?page=3",
+				"prev": "/file/list?page=1",
+				"last": "/file/list?page=20",
+				"first": "/file/list?page=0"
+			}
+		}
+		MOCK;
+		return new JSONResponse(
+			json_decode($json, true)
+		);
+	}
 }
