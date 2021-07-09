@@ -8,8 +8,8 @@
 				<form v-show="!hasInfo" @submit="(e) => e.preventDefault()">
 					<h1>{{ title }}</h1>
 					<h3>{{ legend }}</h3>
-					<input v-model="uuid" type="text">
-					<button :class="hasLoading ? 'btn-load primary loading':'btn'" @click.prevent="validateByUUID(uuid)">
+					<input v-model="myUuid" type="text">
+					<button :class="hasLoading ? 'btn-load primary loading':'btn'" @click.prevent="validateByUUID(myUuid)">
 						{{ buttonTitle }}
 					</button>
 				</form>
@@ -33,12 +33,12 @@
 							<img class="icon" :src="signatureIcon">
 							<h1>{{ t('libresign', 'Subscriptions:') }}</h1>
 						</div>
-						<div v-for="item in document.signatures"
+						<div v-for="item in document.signers"
 							id="sign"
 							:key="item.fululName"
 							class="scroll">
 							<div class="subscriber">
-								<span><b>{{ item.displayName ? item.displayName : "None" }}</b></span>
+								<span><b>{{ getName(item) }}</b></span>
 								<span v-if="item.signed" class="data-signed">{{ formatData(item.signed) }} </span>
 								<span v-else>{{ noDateMessage }}</span>
 							</div>
@@ -71,6 +71,14 @@ export default {
 		Content,
 	},
 
+	props: {
+		uuid: {
+			type: String,
+			required: false,
+			default: '',
+		},
+	},
+
 	data() {
 		return {
 			image: BackgroundImage,
@@ -81,7 +89,7 @@ export default {
 			legend: t('libresign', 'Enter the UUID of the document to validate.'),
 			buttonTitle: t('libresign', 'Validation'),
 			noDateMessage: t('libresign', 'No date'),
-			uuid: '',
+			myUuid: this.uuid ? this.uuid : '',
 			hasInfo: false,
 			hasLoading: false,
 			document: {},
@@ -90,13 +98,8 @@ export default {
 	},
 	watch: {
 		'$route.params'(toParams, previousParams) {
-			this.uuid = toParams.uuid
+			this.validateByUUID(toParams.uuid)
 		},
-	},
-	created() {
-		setTimeout(() => {
-			this.validateByUUID(this.uuid)
-		}, 100)
 	},
 	methods: {
 		async validateByUUID(uuid) {
@@ -105,6 +108,7 @@ export default {
 			try {
 				const response = await axios.get(generateUrl(`/apps/libresign/api/0.1/file/validate/uuid/${uuid}`))
 				showSuccess(t('libresign', 'This document is valid'))
+				console.info(response)
 				this.document = response.data
 				this.hasInfo = true
 				this.hasLoading = false
@@ -112,6 +116,17 @@ export default {
 				this.hasLoading = false
 				showError(err.response.data.errors[0])
 			}
+		},
+		getName(user) {
+			if (user.fullName) {
+				return user.fullName
+			} else if (user.displayName) {
+				return user.displayName
+			} else if (user.email) {
+				return user.email
+			}
+
+			return 'None'
 		},
 		linkToDownload(val) {
 			return val

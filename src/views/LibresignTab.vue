@@ -22,23 +22,23 @@
 -->
 
 <template>
-	<AppSidebar :class="{'app-sidebar--without-background lb-ls-root' : 'lb-ls-root'}" title="LibreSign" :header="false">
+	<AppSidebar class="app-sidebar--without-background lb-ls-root" title="LibreSign" :header="false">
 		<AppSidebarTab
 			id="libresign-tab"
 			icon="icon-rename"
 			:name="t('libresign', 'LibreSign')">
 			<div v-show="showButtons" class="lb-ls-buttons">
-				<button class="primary" :disabled="!hasSign" @click="option('sign')">
+				<button v-if="hasSign" class="primary" @click="option('sign')">
 					{{ t('libresign', 'Sign') }}
 				</button>
 				<button
-					:disabled="!canRequestSign"
+					v-if="canRequestSign"
 					class="primary"
 					@click="option('request')">
-					{{ t('libresign', 'Request subscription') }}
+					{{ t('libresign', 'Request') }}
 				</button>
-				<button v-if="hasSignatures" @click="option('verify')">
-					{{ t('libresign', 'Verify signatures') }}
+				<button v-if="haveRequest" @click="option('signatures')">
+					{{ t('libresign', 'Status') }}
 				</button>
 			</div>
 
@@ -46,6 +46,7 @@
 				ref="sign"
 				:disabled="disabledSign"
 				:pfx="hasPfx"
+				:has-loading="loadingInput"
 				@sign:document="signDocument">
 				<template slot="actions">
 					<button class="lb-ls-return-button" @click="option('sign')">
@@ -64,12 +65,51 @@
 					</button>
 				</template>
 			</Request>
+
+			<div v-if="signaturesShow" id="signers" class="container-signers">
+				<div class="content-signers">
+					<ul>
+						<li v-for="signer in signers" :key="signer.uid">
+							<div class="signer-content">
+								<div class="container-dot">
+									<div class="icon-signer icon-user" />
+									<span>
+										{{ getName(signer) }}
+									</span>
+								</div>
+								<div class="container-dot">
+									<div :class="'dot ' + (signer.signed === null ? 'pending' : 'signed')" />
+									<span>
+										{{ signer.signed === null ? t('libresign', 'Pending') : t('libresign','Signed') }}
+									</span>
+								</div>
+								<div v-if="showDivButtons(signer)" class="container-dot container-btn">
+									<button v-if="showSignButton(signer)" class="primary" @click="changeToSign">
+										{{ t('libresign', 'Sign') }}
+									</button>
+									<button v-if="showNotifyButton(signer)" class="primary" @click="resendEmail(signer.email)">
+										{{ t('libresign', 'Send reminder') }}
+									</button>
+									<Actions v-if="showDelete(signer)">
+										<ActionButton icon="icon-delete" @click="deleteUserRequest(signer)" />
+									</Actions>
+								</div>
+							</div>
+						</li>
+					</ul>
+					<button class="lb-ls-return-button" @click="option('signatures')">
+						{{ t('libresign', 'Return') }}
+					</button>
+				</div>
+			</div>
 		</AppSidebarTab>
 	</AppSidebar>
 </template>
 
 <script>
 import AppSidebar from '@nextcloud/vue/dist/Components/AppSidebar'
+import Actions from '@nextcloud/vue/dist/Components/Actions'
+import ActionButton from '@nextcloud/vue/dist/Components/ActionButton'
 import AppSidebarTab from '@nextcloud/vue/dist/Components/AppSidebarTab'
 import { showError, showSuccess } from '@nextcloud/dialogs'
 import axios from '@nextcloud/axios'
@@ -82,6 +122,8 @@ export default {
 
 	components: {
 		AppSidebar,
+		Actions,
+		ActionButton,
 		AppSidebarTab,
 		Sign,
 		Request,
@@ -94,8 +136,12 @@ export default {
 			showButtons: true,
 			signShow: false,
 			requestShow: false,
+			signaturesShow: false,
 			disabledSign: false,
+			signers: {},
+			loadingInput: false,
 			canRequestSign: false,
+			haveRequest: false,
 			canSign: false,
 			fileInfo: null,
 			hasPfx: false,
@@ -114,10 +160,20 @@ export default {
 		},
 	},
 
-	created() {
-		this.fileInfo = window.OCA.Libresign.fileInfo
-		this.getInfo()
-		this.getMe()
+	watch: {
+		fileInfo() {
+			this.getInfo()
+			this.getMe()
+			this.signShow = false
+			this.requestShow = false
+			this.signaturesShow = false
+		},
+
+		signers() {
+			if (this.signers.length <= 0) {
+				this.haveRequest = false
+			}
+		},
 	},
 
 	methods: {
@@ -130,6 +186,33 @@ export default {
 			this.resetState()
 		},
 
+		showSignButton(user) {
+			if (user.me) {
+				if (user.signed) {
+					return false
+				}
+				return true
+			}
+		},
+
+		showNotifyButton(user) {
+			if (!user.me) {
+				if (user.signed) {
+					return false
+				}
+				return true
+			}
+			return false
+		},
+		showDelete(user) {
+			if (user.signed) {
+				return false
+			}
+			return true
+		},
+		showDivButtons(user) {
+			return !!(this.showSignButton(user) || this.showNotifyButton(user) || this.showDelete(user))
+		},
 		/**
 		 * Reset the current view to its default state
 		 */
@@ -138,6 +221,16 @@ export default {
 			this.signShow = false
 		},
 
+		getName(user) {
+			if (user.displayName) {
+				return user.displayName
+			} else if (user.fullName) {
+				return user.fullName
+			} else if (user.email) {
+				return user.email
+			}
+			return t('libresign', 'Account not exist')
+		},
 		async getMe() {
 			const response = await axios.get(generateUrl('/apps/libresign/api/0.1/account/me'))
 			this.hasPfx = response.data.settings.hasSignatureFile
@@ -146,35 +239,103 @@ export default {
 
 		async getInfo() {
 			try {
-				console.info('fileInfo: ', this.fileInfo)
 				const response = await axios.get(generateUrl(`/apps/libresign/api/0.1/file/validate/file_id/${this.fileInfo.id}`))
 				this.canSign = response.data.settings.canSign
-
+				if (response.data.signers) {
+					this.haveRequest = true
+					this.canRequestSign = true
+					this.signers = response.data.signers
+				} else {
+					this.signers = []
+				}
 			} catch (err) {
 				this.canSign = false
 			}
 		},
 
+		changeToSign() {
+			this.option('signatures')
+			this.option('sign')
+		},
+
 		async signDocument(param) {
 			try {
+				this.loadingInput = true
 				this.disabledSign = true
-				const response = await axios.post(generateUrl(`apps/libresign/api/0.1/sign/file_id/${this.fileInfo.id}`), {
+				const response = await axios.post(generateUrl(`/apps/libresign/api/0.1/sign/file_id/${this.fileInfo.id}`), {
 					password: param,
 				})
+				this.getInfo()
 				this.option('sign')
+				this.option('signatures')
 				this.canSign = false
+				this.loadingInput = false
 				return showSuccess(response.data.message)
 			} catch (err) {
 				if (err.response.data.action === 400) {
 					window.location.href = generateUrl('/apps/libresign/reset-password?redirect=CreatePassword')
 				}
 				this.disabledSign = false
+				this.loadingInput = false
 				return showError(err.response.data.errors[0])
+			}
+		},
+		async deleteUserRequest(user) {
+			const result = confirm(t('libresign', 'Are you sure you want to exclude user {email} from the request?', { email: user.email }))
+			if (result === true) {
+				try {
+					const response = await axios.delete(generateUrl(`/apps/libresign/api/0.1/sign/file_id/${this.fileInfo.id}/${user.signatureId}`))
+					if (this.signers.length <= 0) {
+						this.option('signatures')
+					}
+
+					this.getInfo()
+					showSuccess(response.data.message)
+				} catch (err) {
+					showError(err)
+				}
+			}
+		},
+
+		async resendEmail(email) {
+			try {
+				const response = await axios.post(generateUrl('/apps/libresign/api/0.1/notify/signers'), {
+					fileId: this.fileInfo.id,
+					signers: [
+						{
+							email,
+						},
+					],
+				})
+
+				showSuccess(response.data.message)
+			} catch (err) {
+				if (err.response.data.messages) {
+					err.response.data.messages.forEach(error => {
+						showError(error.message)
+					})
+				} else {
+					showError(t('libresign', 'There was an error completing your request'))
+				}
+
 			}
 		},
 
 		async requestSignatures(users, fileInfo) {
 			try {
+				if (this.haveRequest) {
+					const response = await axios.patch(generateUrl('/apps/libresign/api/0.1/sign/register'), {
+						file: {
+							fileId: this.fileInfo.id,
+						},
+						users,
+					})
+					this.option('request')
+					this.clearRequestList()
+					this.getInfo()
+					return showSuccess(response.data.message)
+				}
+
 				const response = await axios.post(generateUrl('/apps/libresign/api/0.1/sign/register'), {
 					file: {
 						fileId: this.fileInfo.id,
@@ -182,9 +343,9 @@ export default {
 					name: this.fileInfo.name.split('.pdf')[0],
 					users,
 				})
-				console.info(response)
 				this.option('request')
 				this.clearRequestList()
+				this.getInfo()
 				return showSuccess(response.data.message)
 			} catch (err) {
 				if (err.response.data.errors) {
@@ -201,6 +362,9 @@ export default {
 			} else if (value === 'request') {
 				this.showButtons = !this.showButtons
 				this.requestShow = !this.requestShow
+			} else if (value === 'signatures') {
+				this.showButtons = !this.showButtons
+				this.signaturesShow = !this.signaturesShow
 			}
 		},
 		clearSiginPassword() {
@@ -215,6 +379,8 @@ export default {
 <style lang="scss">
 .lb-ls-root{
 	width: 100% !important;
+	height: calc(100vh - 223px) !important;
+	min-width: 289px !important;
 
 	.app-sidebar-header {
 		display: none !important;
@@ -236,5 +402,94 @@ export default {
 	align-self: center;
 	position:absolute;
 	bottom: 10px;
+}
+
+.container-signers{
+	display: flex;
+	width: 100%;
+
+	.content-signers{
+		width: 100%;
+		display: flex;
+		flex-direction: column;
+		justify-content: center;
+		align-items: center;
+
+		ul {
+			display: flex;
+			width: 100%;
+			overflow-x: scroll;
+			border: 1px solid #cecece;
+			border-radius: 10px;
+			padding: 10px;
+			height: calc(100vh - 300px);
+			flex-direction: column;
+			padding-bottom: 50px;
+
+			li{
+				padding: 10px;
+				border: 1px solid #cecece;
+				border-radius: 10px;
+				display: flex;
+				flex-direction: column;
+				margin-bottom: 12px;
+
+				.signer-user{
+					display: flex;
+					flex-direction: row;
+					margin: 3px;
+				}
+
+				.container-dot{
+					margin: 3px;
+					display: flex;
+					flex-direction: row;
+					align-items: center;
+					justify-content: flex-start;
+					width: 100%;
+					margin-bottom: 6px;
+					min-height: 26px;
+					cursor: inherit;
+
+					.dot{
+						width: 10px;
+						height: 10px;
+						border-radius: 50%;
+						margin-right: 10px;
+						margin-left: 3px;
+						cursor: inherit;
+					}
+
+					.signed{
+						background: #008000;
+					}
+
+					.pending{
+						background: #d85a0b;
+					}
+
+					span{
+						font-size: 14px;
+						font-weight: normal;
+						text-align: center;
+						color: rgba(0,0,0,.7);
+						cursor: inherit;
+						margin-left: 5px;
+					}
+
+					button{
+						min-width: 130px;
+					}
+				}
+
+				.container-btn{
+					display: flex;
+					justify-content: space-between;
+					align-items: center;
+				}
+
+			}
+		}
+	}
 }
 </style>

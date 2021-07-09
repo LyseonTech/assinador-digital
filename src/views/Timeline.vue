@@ -25,6 +25,7 @@
 		<Sidebar v-if="sidebar"
 			ref="sidebar"
 			:loading="loading"
+			@update="getData"
 			@sign:document="signDocument"
 			@closeSidebar="closeSidebar" />
 	</div>

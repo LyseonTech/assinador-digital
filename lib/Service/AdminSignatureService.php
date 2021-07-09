@@ -48,8 +48,9 @@ class AdminSignatureService {
 			if ($this->cfsslHandler->health($cfsslUri)) {
 				break;
 			}
-			// @codeCoverageIgnore
+			// @codeCoverageIgnoreStart
 			sleep($i);
+			// @codeCoverageIgnoreEnd
 		}
 
 		$this->config->setAppValue(Application::APP_ID, 'authkey', $key);

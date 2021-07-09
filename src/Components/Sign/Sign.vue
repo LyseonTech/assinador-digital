@@ -35,7 +35,7 @@
 		<slot name="actions" />
 		<Modal v-if="modal" size="large" @close="handleModal(false)">
 			<ResetPassword v-if="havePfx" @close="handleModal(false)" />
-			<CreatePassword v-if="!havePfx" @close="handleModal(false)" />
+			<CreatePassword v-if="!havePfx" @changePfx="changePfx" @close="handleModal(false)" />
 		</Modal>
 	</div>
 </template>
@@ -109,6 +109,10 @@ export default {
 		sign(param) {
 			this.clearInput()
 			this.$emit('sign:document', param)
+		},
+		changePfx(value) {
+			this.pfx = value
+			this.emit('change-pfx', true)
 		},
 		handleModal(state) {
 			this.modal = state

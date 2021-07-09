@@ -14,29 +14,28 @@ Types of changes:
 
 <!-- changelog-linker -->
 
-## Draft
+## 2.4.2
 
 # Added
-- GitHub action to add a changelog reminder
 - List of documents
-- Test for validation of Swagger documentation
+- User profile
+- Filter files
+- Add qrcode to footer
+- Validate by LibreSign App
+- Request sign by LibreSign App
+- Resend sign invite email
+- App config to configure JSignPDF
 - Added integration with Approval app on README.md. Thanks to @eneiluj
-- Bump max Nextcloud version to 23
 - Endpoint to list LibreSign files
 - Endpoint to attach files to LibreSign profile
 - Entpoint to list all attached files to LibreSign profile
-- Request Subscription by LibreSign App
-- Validate by LibreSign App 
-- User profile
-- Request sign by LibreSign App
-- Validate by LibreSign App
-- User profile
-- Filter files
-- App config to configure JSignPDF
-- Resend sign invite email
-- Add qrcode to footer
+- Endpoints to delete signer and file sign request
+- One more step to turn possible replace CFSSL
+- Test for validation of Swagger documentation
+- GitHub action to add a changelog reminder
 
 # Changed
+- Bump max Nextcloud version to 23
 - Increment of coverage on backend code
 - Bug fixes and refactorings resulting from increased coverage
 - Use name of user on error message when email is empty

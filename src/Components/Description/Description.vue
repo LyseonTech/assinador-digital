@@ -22,7 +22,7 @@
 -->
 
 <template>
-	<div class="container">
+	<div class="container-desc">
 		<header>
 			<img :src="image">
 			<p>{{ t('libresign', pdfName) }}</p>
@@ -35,7 +35,15 @@
 						t('libresign', 'Subscription password.')
 					}}</label>
 					<div class="form-ib-group">
-						<input id="password" v-model="password" type="password">
+						<input id="password"
+							v-model="password"
+							v-tooltip.left="{
+								content: t('libresign', 'Create your password for signing PDF'),
+								trigger: 'false',
+								show: !havePfx
+							}"
+							:disabled="!havePfx"
+							type="password">
 						<a class="forgot" @click="handleModal(true)">
 							{{ havePfx ? t('libresign', 'Forgot your password?') : t('libresign', 'Create password to sign document') }}
 						</a>
@@ -50,9 +58,13 @@
 					</div>
 				</div>
 			</form>
-			<Modal v-if="modal" size="large" @close="handleModal(false)">
-				<ResetPassword v-if="havePfx" @close="handleModal(false)" />
-				<CreatePassword v-if="!havePfx" @close="handleModal(false)" />
+			<Modal v-if="modal"
+				size="normal"
+				@close="handleModal(false)">
+				<ResetPassword v-if="havePfx" class="modal-dialog" @close="handleModal(false)" />
+				<CreatePassword v-if="!havePfx"
+					@changePfx="changePfx"
+					@close="handleModal(false)" />
 			</Modal>
 		</div>
 	</div>
@@ -112,7 +124,6 @@ export default {
 			return !!this.password
 		},
 	},
-
 	created() {
 		this.getMe()
 	},
@@ -134,6 +145,7 @@ export default {
 				if (response.data.action === 350) {
 					this.$router.push({ name: 'DefaultPageSuccess', uuid: this.uuid })
 				}
+				console.info(this.$store)
 				this.updating = false
 				this.disableButton = true
 			} catch (err) {
@@ -141,6 +153,9 @@ export default {
 				this.updating = false
 				this.disableButton = false
 			}
+		},
+		changePfx(value) {
+			this.havePfx = value
 		},
 		async getMe() {
 			const response = await axios.get(generateUrl('/apps/libresign/api/0.1/account/me'))
@@ -153,6 +168,6 @@ export default {
 }
 </script>
 
-<style lang="scss" scoped>
+<style lang="scss">
 @import './styles';
 </style>

@@ -378,74 +378,6 @@ final class SignFileControllerTest extends ApiTestCase {
 	/**
 	 * @runInSeparateProcess
 	 */
-	public function testDeleteRegisterWithValidationFailure() {
-		$user = $this->createUser('username', 'password');
-
-		$this->request
-			->withMethod('DELETE')
-			->withPath('/sign/register/signature')
-			->withRequestHeader([
-				'Authorization' => 'Basic ' . base64_encode('username:password'),
-				'Content-Type' => 'application/json'
-			])
-			->withRequestBody([
-				'uuid' => 'invalid',
-				'users' => []
-			])
-			->assertResponseCode(422);
-
-		$response = $this->assertRequest();
-		$body = json_decode($response->getBody()->getContents(), true);
-		$this->assertEquals('You are not allowed to request signing', $body['message']);
-	}
-
-	/**
-	 * @runInSeparateProcess
-	 */
-	public function testDeleteRegisterWithSuccess() {
-		$user = $this->createUser('username', 'password');
-
-		$this->mockConfig([
-			'libresign' => [
-				'webhook_authorized' => '["admin","testGroup"]',
-				'notifyUnsignedUser' => 0
-			]
-		]);
-
-		$user->setEMailAddress('person@test.coop');
-		$file = $this->requestSignFile([
-			'file' => ['base64' => base64_encode(file_get_contents(__DIR__ . '/../../fixtures/small_valid.pdf'))],
-			'name' => 'test',
-			'users' => [
-				[
-					'email' => 'user01@test.coop'
-				]
-			],
-			'userManager' => $user
-		]);
-
-		$this->request
-			->withMethod('DELETE')
-			->withPath('/sign/register/signature')
-			->withRequestHeader([
-				'Authorization' => 'Basic ' . base64_encode('username:password'),
-				'Content-Type' => 'application/json'
-			])
-			->withRequestBody([
-				'uuid' => $file['uuid'],
-				'users' => [
-					[
-						'email' => 'user01@test.coop'
-					]
-				]
-			]);
-
-		$this->assertRequest();
-	}
-
-	/**
-	 * @runInSeparateProcess
-	 */
 	public function testAccountSignatureEndpointWithSuccess() {
 		$user = $this->createUser('username', 'password');
 		$user->setEMailAddress('person@test.coop');
@@ -498,6 +430,104 @@ final class SignFileControllerTest extends ApiTestCase {
 				'signPassword' => ''
 			])
 			->withPath('/account/signature')
+			->assertResponseCode(401);
+
+		$this->assertRequest();
+	}
+
+	/**
+	 * @runInSeparateProcess
+	 */
+	public function testDeleteSignFileIdSignatureIdWithSuccess() {
+		$user = $this->createUser('username', 'password');
+		$file = $this->requestSignFile([
+			'file' => ['base64' => base64_encode(file_get_contents(__DIR__ . '/../../fixtures/small_valid.pdf'))],
+			'name' => 'test',
+			'users' => [
+				[
+					'email' => 'person@test.coop'
+				]
+			],
+			'userManager' => $user
+		]);
+
+		$this->mockConfig([
+			'libresign' => [
+				'webhook_authorized' => '["admin","testGroup"]'
+			]
+		]);
+
+		$this->request
+			->withMethod('DELETE')
+			->withRequestHeader([
+				'Authorization' => 'Basic ' . base64_encode('username:password')
+			])
+			->withPath('/sign/file_id/' . $file['nodeId'] . '/' . $file['users'][0]->getId());
+
+		$this->assertRequest();
+	}
+
+	/**
+	 * @runInSeparateProcess
+	 */
+	public function testDeleteSignFileIdSignatureIdWithError() {
+		$user = $this->createUser('username', 'password');
+
+		$this->request
+			->withMethod('DELETE')
+			->withRequestHeader([
+				'Authorization' => 'Basic ' . base64_encode('username:password')
+			])
+			->withPath('/sign/file_id/171/171')
+			->assertResponseCode(401);
+
+		$this->assertRequest();
+	}
+
+	/**
+	 * @runInSeparateProcess
+	 */
+	public function testDeleteUsingSignFileIdWithSuccess() {
+		$user = $this->createUser('username', 'password');
+		$file = $this->requestSignFile([
+			'file' => ['base64' => base64_encode(file_get_contents(__DIR__ . '/../../fixtures/small_valid.pdf'))],
+			'name' => 'test',
+			'users' => [
+				[
+					'email' => 'person@test.coop'
+				]
+			],
+			'userManager' => $user
+		]);
+
+		$this->mockConfig([
+			'libresign' => [
+				'webhook_authorized' => '["admin","testGroup"]'
+			]
+		]);
+
+		$this->request
+			->withMethod('DELETE')
+			->withRequestHeader([
+				'Authorization' => 'Basic ' . base64_encode('username:password')
+			])
+			->withPath('/sign/file_id/' . $file['nodeId']);
+
+		$this->assertRequest();
+	}
+
+	/**
+	 * @runInSeparateProcess
+	 */
+	public function testDeleteUsingSignFileIdWithError() {
+		$user = $this->createUser('username', 'password');
+
+		$this->request
+			->withMethod('DELETE')
+			->withRequestHeader([
+				'Authorization' => 'Basic ' . base64_encode('username:password')
+			])
+			->withPath('/sign/file_id/171')
 			->assertResponseCode(401);
 
 		$this->assertRequest();

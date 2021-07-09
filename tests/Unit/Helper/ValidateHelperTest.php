@@ -251,7 +251,6 @@ final class ValidateHelperTest extends \OCA\Libresign\Tests\Unit\TestCase {
 		$this->fileUserMapper
 			->method('getByFileUuid')
 			->willReturn([]);
-		$this->validateHelper->getLibreSignFile(171);
 		$this->validateHelper->signerWasAssociated([
 			'email' => 'invalid@test.coop'
 		]);
@@ -280,7 +279,6 @@ final class ValidateHelperTest extends \OCA\Libresign\Tests\Unit\TestCase {
 		$this->fileUserMapper
 			->method('getByFileUuid')
 			->willReturn([$fileUser]);
-		$this->validateHelper->getLibreSignFile(171);
 		$this->validateHelper->notSigned([
 			'email' => 'signed@test.coop'
 		]);
@@ -303,6 +301,9 @@ final class ValidateHelperTest extends \OCA\Libresign\Tests\Unit\TestCase {
 
 	public function testValidateIfNodeIdExistsWithInvalidFile() {
 		$this->expectExceptionMessage('Invalid fileID');
+		$this->root
+			->method('getById')
+			->willReturn([0 => null]);
 		$this->validateHelper->validateIfNodeIdExists(171);
 	}
 
@@ -311,6 +312,21 @@ final class ValidateHelperTest extends \OCA\Libresign\Tests\Unit\TestCase {
 			->method('getById')
 			->willReturn(['file']);
 		$actual = $this->validateHelper->validateIfNodeIdExists(171);
+		$this->assertNull($actual);
+	}
+
+	public function testValidateFileUuidWithInvalidUuid() {
+		$this->expectExceptionMessage('Invalid UUID file');
+		$this->fileMapper->method('getByUuid')->will($this->returnCallback(function () {
+			throw new \Exception('not found');
+		}));
+		$this->validateHelper->validateFileUuid(['uuid' => 'invalid']);
+	}
+
+	public function testValidateFileUuidWithValidUuid() {
+		$file = $this->createMock(\OCA\Libresign\Db\File::class);
+		$this->fileMapper->method('getByUuid')->will($this->returnValue($file));
+		$actual = $this->validateHelper->validateFileUuid(['uuid' => 'valid']);
 		$this->assertNull($actual);
 	}
 }

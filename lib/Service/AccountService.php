@@ -228,6 +228,25 @@ class AccountService {
 		$this->generateCertificate($uid, $signPassword, $newUser->getUID());
 	}
 
+	public function getCertificateHandler() {
+		if (!$this->cfsslHandler->getCommonName()) {
+			$this->cfsslHandler->setCommonName($this->config->getAppValue(Application::APP_ID, 'commonName'));
+		}
+		if (!$this->cfsslHandler->getCountry()) {
+			$this->cfsslHandler->setCountry($this->config->getAppValue(Application::APP_ID, 'country'));
+		}
+		if (!$this->cfsslHandler->getOrganization()) {
+			$this->cfsslHandler->setOrganization($this->config->getAppValue(Application::APP_ID, 'organization'));
+		}
+		if (!$this->cfsslHandler->getOrganizationUnit()) {
+			$this->cfsslHandler->setOrganizationUnit($this->config->getAppValue(Application::APP_ID, 'organizationUnit'));
+		}
+		if (!$this->cfsslHandler->getCfsslUri()) {
+			$this->cfsslHandler->setCfsslUri($this->config->getAppValue(Application::APP_ID, 'cfsslUri'));
+		}
+		return $this->cfsslHandler;
+	}
+
 	/**
 	 * Generate certificate
 	 *
@@ -237,13 +256,8 @@ class AccountService {
 	 * @return File
 	 */
 	public function generateCertificate(string $email, string $signPassword, string $uid): File {
-		$content = $this->cfsslHandler
-			->setCommonName($this->config->getAppValue(Application::APP_ID, 'commonName'))
-			->sethosts([$email])
-			->setCountry($this->config->getAppValue(Application::APP_ID, 'country'))
-			->setOrganization($this->config->getAppValue(Application::APP_ID, 'organization'))
-			->setOrganizationUnit($this->config->getAppValue(Application::APP_ID, 'organizationUnit'))
-			->setCfsslUri($this->config->getAppValue(Application::APP_ID, 'cfsslUri'))
+		$content = $this->getCertificateHandler()
+			->setHosts([$email])
 			->setPassword($signPassword)
 			->generateCertificate();
 		if (!$content) {
@@ -421,9 +435,9 @@ class AccountService {
 		return $return;
 	}
 
-	public function list(IUser $user, $page = null, $length = 15) {
+	public function list(IUser $user, $page = null, $length = null) {
 		$page = $page ?? 1;
-		$length = $length ?? 1;
+		$length = $length ?? $this->config->getAppValue(Application::APP_ID, 'length_of_page', 100);
 		$data = $this->reportDao->getFilesAssociatedFilesWithMeFormatted($user->getUID(), $page, $length);
 		$data['pagination']->setRootPath('/file/list');
 		return [

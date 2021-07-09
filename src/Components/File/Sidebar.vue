@@ -15,7 +15,7 @@
 			:name="t('libresign', 'Signatures')"
 			icon="icon-rename"
 			:order="1">
-			<SignaturesTab :items="currentFile.file.signers" @change-sign-tab="changeTab" />
+			<SignaturesTab :items="currentFile.file.signers" @update="update" @change-sign-tab="changeTab" />
 		</AppSidebarTab>
 		<AppSidebarTab
 			v-if="hasSign"
@@ -85,6 +85,9 @@ export default {
 	methods: {
 		closeSidebar() {
 			this.$emit('closeSidebar', true)
+		},
+		update() {
+			this.$emit('update', true)
 		},
 		clearSignInput() {
 			this.$refs.sign.clearInput()

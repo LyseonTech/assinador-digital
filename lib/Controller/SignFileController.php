@@ -7,7 +7,7 @@ use OCA\Libresign\Db\FileMapper;
 use OCA\Libresign\Db\FileUserMapper;
 use OCA\Libresign\Exception\LibresignException;
 use OCA\Libresign\Helper\JSActions;
-use OCA\Libresign\Service\MailService;
+use OCA\Libresign\Helper\ValidateHelper;
 use OCA\Libresign\Service\SignFileService;
 use OCP\AppFramework\ApiController;
 use OCP\AppFramework\Http;
@@ -28,8 +28,6 @@ class SignFileController extends ApiController {
 	private $fileMapper;
 	/** @var SignFileService */
 	protected $signFile;
-	/** @var MailService */
-	private $mail;
 	/** @var LoggerInterface */
 	private $logger;
 
@@ -39,8 +37,8 @@ class SignFileController extends ApiController {
 		FileUserMapper $fileUserMapper,
 		FileMapper $fileMapper,
 		IUserSession $userSession,
+		ValidateHelper $validateHelper,
 		SignFileService $signFile,
-		MailService $mail,
 		LoggerInterface $logger
 	) {
 		parent::__construct(Application::APP_ID, $request);
@@ -48,8 +46,8 @@ class SignFileController extends ApiController {
 		$this->fileUserMapper = $fileUserMapper;
 		$this->fileMapper = $fileMapper;
 		$this->userSession = $userSession;
+		$this->validateHelper = $validateHelper;
 		$this->signFile = $signFile;
-		$this->mail = $mail;
 		$this->logger = $logger;
 	}
 
@@ -102,21 +100,23 @@ class SignFileController extends ApiController {
 
 	/**
 	 * @NoAdminRequired
-	 * @CORS
 	 * @NoCSRFRequired
+	 *
+	 * @param string $uuid
+	 * @param array $users
 	 * @return JSONResponse
 	 */
-	public function updateSign(string $uuid, array $users) {
+	public function updateSign(array $users, ?string $uuid = null, ?array $file = []) {
 		$user = $this->userSession->getUser();
 		$data = [
 			'uuid' => $uuid,
+			'file' => $file,
 			'users' => $users,
 			'userManager' => $user
 		];
 		try {
 			$this->signFile->validateUserManager($data);
-			$this->signFile->validateFileUuid($data);
-			$this->signFile->validateUsers($data);
+			$this->signFile->validateExistingFile($data);
 			$return = $this->signFile->save($data);
 			unset(
 				$return['id'],
@@ -141,46 +141,11 @@ class SignFileController extends ApiController {
 
 	/**
 	 * @NoAdminRequired
-	 * @CORS
 	 * @NoCSRFRequired
+	 *
+	 * @param string $fileId
+	 * @param string $password
 	 * @return JSONResponse
-	 */
-	public function removeSign(string $uuid, array $users) {
-		$user = $this->userSession->getUser();
-		$data = [
-			'uuid' => $uuid,
-			'users' => $users,
-			'userManager' => $user
-		];
-		try {
-			$this->signFile->validateUserManager($data);
-			$this->signFile->validateFileUuid($data);
-			$this->signFile->validateUsers($data);
-			$this->signFile->canDeleteSignRequest($data);
-			$deletedUsers = $this->signFile->deleteSignRequest($data);
-			foreach ($deletedUsers as $user) {
-				$this->mail->notifyUnsignedUser($user);
-			}
-		} catch (\Throwable $th) {
-			$message = $th->getMessage();
-			return new JSONResponse(
-				[
-					'message' => $message,
-				],
-				Http::STATUS_UNPROCESSABLE_ENTITY
-			);
-		}
-		return new JSONResponse(
-			[
-				'message' => $this->l10n->t('Success')
-			],
-			Http::STATUS_OK
-		);
-	}
-
-	/**
-	 * @NoAdminRequired
-	 * @NoCSRFRequired
 	 */
 	public function signUsingFileid(string $fileId, string $password): JSONResponse {
 		return $this->sign($password, $fileId);
@@ -189,6 +154,10 @@ class SignFileController extends ApiController {
 	/**
 	 * @NoAdminRequired
 	 * @NoCSRFRequired
+	 *
+	 * @param string $uuid
+	 * @param string $password
+	 * @return JSONResponse
 	 */
 	public function signUsingUuid(string $uuid, string $password): JSONResponse {
 		return $this->sign($password, null, $uuid);
@@ -270,5 +239,77 @@ class SignFileController extends ApiController {
 				Http::STATUS_UNPROCESSABLE_ENTITY
 			);
 		}
+	}
+
+	/**
+	 * @NoAdminRequired
+	 * @NoCSRFRequired
+	 *
+	 * @param integer $fileId
+	 * @param integer $signatureId
+	 * @return JSONResponse
+	 */
+	public function deleteOneSignRequestUsingFileId(int $fileId, int $signatureId) {
+		try {
+			$data = [
+				'userManager' => $this->userSession->getUser(),
+				'file' => [
+					'fileId' => $fileId
+				]
+			];
+			$this->signFile->validateUserManager($data);
+			$this->signFile->validateExistingFile($data);
+			$this->validateHelper->validateIsSignerOfFile($signatureId, $fileId);
+			$this->signFile->unassociateToUser($fileId, $signatureId);
+		} catch (\Throwable $th) {
+			return new JSONResponse(
+				[
+					'message' => $th->getMessage(),
+				],
+				Http::STATUS_UNAUTHORIZED
+			);
+		}
+		return new JSONResponse(
+			[
+				'success' => true,
+				'message' => $this->l10n->t('Success')
+			],
+			Http::STATUS_OK
+		);
+	}
+
+	/**
+	 * @NoAdminRequired
+	 * @NoCSRFRequired
+	 *
+	 * @param integer $fileId
+	 * @return JSONResponse
+	 */
+	public function deleteAllSignRequestUsingFileId(int $fileId) {
+		try {
+			$data = [
+				'userManager' => $this->userSession->getUser(),
+				'file' => [
+					'fileId' => $fileId
+				]
+			];
+			$this->signFile->validateUserManager($data);
+			$this->signFile->validateExistingFile($data);
+			$this->signFile->deleteSignRequest($data);
+		} catch (\Throwable $th) {
+			return new JSONResponse(
+				[
+					'message' => $th->getMessage(),
+				],
+				Http::STATUS_UNAUTHORIZED
+			);
+		}
+		return new JSONResponse(
+			[
+				'success' => true,
+				'message' => $this->l10n->t('Success')
+			],
+			Http::STATUS_OK
+		);
 	}
 }

@@ -15,7 +15,6 @@ use OCP\Files\File;
 use OCP\Files\IRootFolder;
 use OCP\Http\Client\IClientService;
 use OCP\Http\Client\IResponse;
-use OCP\IConfig;
 use OCP\IL10N;
 use OCP\IUserManager;
 use Psr\Log\LoggerInterface;
@@ -25,10 +24,6 @@ use setasign\Fpdi\PdfParser\CrossReference\CrossReferenceException;
 use setasign\Fpdi\PdfParser\PdfParserException;
 
 class SignFileService {
-	/** @var FileEntity */
-	private $file;
-	/** @var IConfig */
-	private $config;
 	/** @var IL10N */
 	private $l10n;
 	/** @var FileMapper */
@@ -55,7 +50,6 @@ class SignFileService {
 	private $root;
 
 	public function __construct(
-		IConfig $config,
 		IL10N $l10n,
 		FileMapper $fileMapper,
 		FileUserMapper $fileUserMapper,
@@ -69,7 +63,6 @@ class SignFileService {
 		ValidateHelper $validateHelper,
 		IRootFolder $root
 	) {
-		$this->config = $config;
 		$this->l10n = $l10n;
 		$this->fileMapper = $fileMapper;
 		$this->fileUserMapper = $fileUserMapper;
@@ -86,7 +79,13 @@ class SignFileService {
 
 	public function save(array $data) {
 		if (!empty($data['uuid'])) {
-			$file = $this->getFileByUuid($data['uuid']);
+			$file = $this->fileMapper->getByUuid($data['uuid']);
+		} elseif (!empty($data['file']['fileId'])) {
+			try {
+				$file = $this->fileMapper->getByFileId($data['file']['fileId']);
+			} catch (\Throwable $th) {
+				$file = $this->saveFile($data);
+			}
 		} else {
 			$file = $this->saveFile($data);
 		}
@@ -141,19 +140,6 @@ class SignFileService {
 			}
 		}
 		return $return;
-	}
-
-	/**
-	 * Get LibreSign file entity by UUID
-	 *
-	 * @param string $uuid
-	 * @return FileEntity
-	 */
-	private function getFileByUuid(string $uuid): FileEntity {
-		if (!$this->file || $this->file->getUuid() !== $uuid) {
-			$this->file = $this->fileMapper->getByUuid($uuid);
-		}
-		return $this->file;
 	}
 
 	private function getFileUser(string $email, int $fileId): FileUserEntity {
@@ -303,11 +289,19 @@ class SignFileService {
 		$this->validateHelper->validateNewFile($data);
 	}
 
-	public function validateFileUuid(array $data) {
-		try {
-			$this->getFileByUuid($data['uuid']);
-		} catch (\Throwable $th) {
-			throw new \Exception($this->l10n->t('Invalid UUID file'));
+	public function validateExistingFile(array $data) {
+		if (isset($data['uuid'])) {
+			$this->validateHelper->validateFileUuid($data);
+			$file = $this->fileMapper->getByUuid($data['uuid']);
+			$this->validateHelper->iRequestedSignThisFile($data['userManager'], $file->getNodeId());
+		} elseif (isset($data['file'])) {
+			if (!isset($data['file']['fileId'])) {
+				throw new \Exception($this->l10n->t('Invalid fileID'));
+			}
+			$this->validateHelper->validateLibreSignNodeId($data['file']['fileId']);
+			$this->validateHelper->iRequestedSignThisFile($data['userManager'], $data['file']['fileId']);
+		} else {
+			throw new \Exception($this->l10n->t('Inform or UUID or a File object'));
 		}
 	}
 
@@ -335,7 +329,11 @@ class SignFileService {
 	 * @param array $data
 	 */
 	public function canDeleteSignRequest(array $data) {
-		$signatures = $this->fileUserMapper->getByFileUuid($data['uuid']);
+		if (!empty($data['uuid'])) {
+			$signatures = $this->fileUserMapper->getByFileUuid($data['uuid']);
+		} elseif (!empty($data['file']['fileId'])) {
+			$signatures = $this->fileUserMapper->getByNodeId($data['file']['fileId']);
+		}
 		$signed = array_filter($signatures, fn ($s) => $s->getSigned());
 		if ($signed) {
 			throw new \Exception($this->l10n->t('Document already signed'));
@@ -348,9 +346,24 @@ class SignFileService {
 		});
 	}
 
-	public function deleteSignRequest(array $data): array {
-		$signatures = $this->fileUserMapper->getByFileUuid($data['uuid']);
-		$fileData = $this->getFileByUuid($data['uuid']);
+	/**
+	 * @deprecated 2.4.0
+	 * @param array $data
+	 * @return array
+	 */
+	public function deleteSignRequestDeprecated(array $data): array {
+		$this->validateHelper->validateFileUuid($data);
+		$this->validateUsers($data);
+		$this->canDeleteSignRequest($data);
+
+		if (!empty($data['uuid'])) {
+			$signatures = $this->fileUserMapper->getByFileUuid($data['uuid']);
+			$fileData = $this->fileMapper->getByUuid($data['uuid']);
+		} elseif (!empty($data['file']['fileId'])) {
+			$signatures = $this->fileUserMapper->getByNodeId($data['file']['fileId']);
+			$fileData = $this->fileMapper->getByFileId($data['file']['fileId']);
+		}
+
 		$deletedUsers = [];
 		foreach ($data['users'] as $key => $signer) {
 			try {
@@ -358,17 +371,39 @@ class SignFileService {
 					$signer['email'],
 					$fileData->getId()
 				);
-				$this->fileUserMapper->delete($fileUser);
 				$deletedUsers[] = $fileUser;
+				$this->fileUserMapper->delete($fileUser);
 			} catch (\Throwable $th) {
 				// already deleted
 			}
 		}
 		if ((empty($data['users']) && !count($signatures)) || count($signatures) === count($data['users'])) {
-			$file = $this->getFileByUuid($data['uuid']);
-			$this->fileMapper->delete($file);
+			$this->fileMapper->delete($fileData);
 		}
 		return $deletedUsers;
+	}
+
+	/**
+	 * @param array $data
+	 * @return void
+	 */
+	public function deleteSignRequest(array $data): void {
+		if (!empty($data['uuid'])) {
+			$signatures = $this->fileUserMapper->getByFileUuid($data['uuid']);
+			$fileData = $this->fileMapper->getByUuid($data['uuid']);
+		} elseif (!empty($data['file']['fileId'])) {
+			$signatures = $this->fileUserMapper->getByNodeId($data['file']['fileId']);
+			$fileData = $this->fileMapper->getByFileId($data['file']['fileId']);
+		}
+		foreach ($signatures as $fileUser) {
+			$this->fileUserMapper->delete($fileUser);
+		}
+		$this->fileMapper->delete($fileData);
+	}
+
+	public function unassociateToUser(int $fileId, int $signatureId) {
+		$fileUser = $this->fileUserMapper->getByFileIdAndFileUserId($fileId, $signatureId);
+		$this->fileUserMapper->delete($fileUser);
 	}
 
 	public function notifyCallback(string $uri, string $uuid, File $file): IResponse {

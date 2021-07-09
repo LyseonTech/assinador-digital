@@ -18,6 +18,8 @@ use OCP\IDBConnection;
  * @method FileUser delete(FileUser $entity)
  */
 class FileUserMapper extends QBMapper {
+	/** @var FileUser[][] */
+	private $signers = [];
 
 	/**
 	 * @param IDBConnection $db
@@ -50,15 +52,18 @@ class FileUserMapper extends QBMapper {
 	 * @return FileUser
 	 */
 	public function getByUuid(string $uuid): FileUser {
-		$qb = $this->db->getQueryBuilder();
+		if (!isset($this->signers['fileUserUuid'][$uuid])) {
+			$qb = $this->db->getQueryBuilder();
 
-		$qb->select('*')
-			->from($this->getTableName())
-			->where(
-				$qb->expr()->eq('uuid', $qb->createNamedParameter($uuid, IQueryBuilder::PARAM_STR))
-			);
+			$qb->select('*')
+				->from($this->getTableName())
+				->where(
+					$qb->expr()->eq('uuid', $qb->createNamedParameter($uuid, IQueryBuilder::PARAM_STR))
+				);
 
-		return $this->findEntity($qb);
+			$this->signers['fileUserUuid'][$uuid] = $this->findEntity($qb);
+		}
+		return $this->signers['fileUserUuid'][$uuid];
 	}
 
 	public function getByEmailAndFileId(string $email, int $fileId) {
@@ -83,15 +88,20 @@ class FileUserMapper extends QBMapper {
 	 * @return FileUser[]
 	 */
 	public function getByFileId(int $fileId) {
-		$qb = $this->db->getQueryBuilder();
+		if (!isset($this->signers['fileId'][$fileId])) {
+			$qb = $this->db->getQueryBuilder();
 
-		$qb->select('*')
-			->from($this->getTableName())
-			->where(
-				$qb->expr()->eq('file_id', $qb->createNamedParameter($fileId, IQueryBuilder::PARAM_INT))
-			);
-
-		return $this->findEntities($qb);
+			$qb->select('*')
+				->from($this->getTableName())
+				->where(
+					$qb->expr()->eq('file_id', $qb->createNamedParameter($fileId, IQueryBuilder::PARAM_INT))
+				);
+			$signers = $this->findEntities($qb);
+			foreach ($signers as $signer) {
+				$this->signers['fileId'][$fileId][$signer->getId()] = $signer;
+			}
+		}
+		return $this->signers['fileId'][$fileId];
 	}
 
 	/**
@@ -119,16 +129,19 @@ class FileUserMapper extends QBMapper {
 	 * @return FileUser[]
 	 */
 	public function getByNodeId(int $nodeId) {
-		$qb = $this->db->getQueryBuilder();
-
-		$qb->select('fu.*')
-			->from($this->getTableName(), 'fu')
-			->join('fu', 'libresign_file', 'f', 'fu.file_id = f.id')
-			->where(
-				$qb->expr()->eq('f.node_id', $qb->createNamedParameter($nodeId, IQueryBuilder::PARAM_STR))
-			);
-
-		return $this->findEntities($qb);
+		if (!isset($this->signers['nodeId'][$nodeId])) {
+			$qb = $this->db->getQueryBuilder();
+	
+			$qb->select('fu.*')
+				->from($this->getTableName(), 'fu')
+				->join('fu', 'libresign_file', 'f', 'fu.file_id = f.id')
+				->where(
+					$qb->expr()->eq('f.node_id', $qb->createNamedParameter($nodeId, IQueryBuilder::PARAM_STR))
+				);
+	
+			$this->signers['nodeId'][$nodeId] = $this->findEntities($qb);
+		}
+		return $this->signers['nodeId'][$nodeId];
 	}
 
 	/**
@@ -138,31 +151,37 @@ class FileUserMapper extends QBMapper {
 	 * @return FileUser[]
 	 */
 	public function getByFileUuid(string $uuid) {
-		$qb = $this->db->getQueryBuilder();
+		if (!isset($this->signers['fileUuid'][$uuid])) {
+			$qb = $this->db->getQueryBuilder();
 
-		$qb->select('fu.*')
-			->from($this->getTableName(), 'fu')
-			->join('fu', 'libresign_file', 'f', 'fu.file_id = f.id')
-			->where(
-				$qb->expr()->eq('f.uuid', $qb->createNamedParameter($uuid, IQueryBuilder::PARAM_STR))
-			);
+			$qb->select('fu.*')
+				->from($this->getTableName(), 'fu')
+				->join('fu', 'libresign_file', 'f', 'fu.file_id = f.id')
+				->where(
+					$qb->expr()->eq('f.uuid', $qb->createNamedParameter($uuid, IQueryBuilder::PARAM_STR))
+				);
 
-		return $this->findEntities($qb);
+			$this->signers['fileUuid'][$uuid] = $this->findEntities($qb);
+		}
+		return $this->signers['fileUuid'][$uuid];
 	}
 
 	public function getByUuidAndUserId(string $uuid, string $userId) {
-		$qb = $this->db->getQueryBuilder();
+		if (!isset($this->signers['fileUserUuid'][$uuid])) {
+			$qb = $this->db->getQueryBuilder();
 
-		$qb->select('*')
-			->from($this->getTableName())
-			->where(
-				$qb->expr()->eq('uuid', $qb->createNamedParameter($uuid, IQueryBuilder::PARAM_STR))
-			)
-			->andWhere(
-				$qb->expr()->eq('user_id', $qb->createNamedParameter($userId, IQueryBuilder::PARAM_STR))
-			);
+			$qb->select('*')
+				->from($this->getTableName())
+				->where(
+					$qb->expr()->eq('uuid', $qb->createNamedParameter($uuid, IQueryBuilder::PARAM_STR))
+				)
+				->andWhere(
+					$qb->expr()->eq('user_id', $qb->createNamedParameter($userId, IQueryBuilder::PARAM_STR))
+				);
 
-		return $this->findEntity($qb);
+			$this->signers['fileUserUuid'][$uuid] = $this->findEntity($qb);
+		}
+		return $this->signers['fileUserUuid'][$uuid];
 	}
 
 	public function getByFileIdAndUserId(string $file_id, string $userId) {
@@ -195,5 +214,24 @@ class FileUserMapper extends QBMapper {
 			);
 
 		return $this->findEntity($qb);
+	}
+
+	public function getByFileIdAndFileUserId(int $fileId, int $signatureId) {
+		if (!isset($this->signers['fileId'][$fileId][$signatureId])) {
+			$qb = $this->db->getQueryBuilder();
+	
+			$qb->select('fu.*')
+				->from($this->getTableName(), 'fu')
+				->join('fu', 'libresign_file', 'f', 'fu.file_id = f.id')
+				->where(
+					$qb->expr()->eq('f.node_id', $qb->createNamedParameter($fileId, IQueryBuilder::PARAM_STR))
+				)
+				->andWhere(
+					$qb->expr()->eq('fu.id', $qb->createNamedParameter($signatureId, IQueryBuilder::PARAM_STR))
+				);
+	
+			$this->signers['fileId'][$fileId][$signatureId] = $this->findEntity($qb);
+		}
+		return $this->signers['fileId'][$fileId][$signatureId];
 	}
 }

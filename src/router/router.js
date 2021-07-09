@@ -58,15 +58,18 @@ const routes = [
 		path: '/validation/:uuid',
 		component: () => import('../views/Validation'),
 		name: 'validationFile',
+		props: (route) => ({
+			uuid: route.params.uuid,
+		}),
 	}, {
-		path: '/sign/:uuid',
+		path: '/sign/:uuid/error',
 		component: () => import('../views/DefaultPageError'),
 		name: 'DefaultPageError',
 	}, {
-		path: '/success',
+		path: '/sign/:uuid/success',
 		component: () => import('../views/DefaultPageSuccess'),
 		name: 'DefaultPageSuccess',
-		props: true,
+		props: (route) => ({ uuid: route.params.uuid }),
 	}, {
 		path: '/reset-password',
 		component: () => import('../views/ResetPassword'),

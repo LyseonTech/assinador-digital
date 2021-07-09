@@ -18,8 +18,8 @@ use OCP\IDBConnection;
  * @method File delete(File $entity)
  */
 class FileMapper extends QBMapper {
-	/** @var FileUserEntity[] */
-	private $signatures;
+	/** @var File[] */
+	private $file;
 
 	/**
 	 * @param IDBConnection $db
@@ -50,16 +50,22 @@ class FileMapper extends QBMapper {
 	 *
 	 * @return Entity Row of table libresign_file
 	 */
-	public function getByUuid(string $uuid) {
-		$qb = $this->db->getQueryBuilder();
+	public function getByUuid(?string $uuid = null) {
+		if (!$uuid) {
+			return array_values($this->file)[0];
+		}
+		if (empty($this->file[$uuid]) || ($this->file[$uuid]->getUuid() !== $uuid)) {
+			$qb = $this->db->getQueryBuilder();
 
-		$qb->select('*')
-			->from($this->getTableName())
-			->where(
-				$qb->expr()->eq('uuid', $qb->createNamedParameter($uuid, IQueryBuilder::PARAM_STR))
-			);
+			$qb->select('*')
+				->from($this->getTableName())
+				->where(
+					$qb->expr()->eq('uuid', $qb->createNamedParameter($uuid, IQueryBuilder::PARAM_STR))
+				);
 
-		return $this->findEntity($qb);
+			$this->file[$uuid] = $this->findEntity($qb);
+		}
+		return $this->file[$uuid];
 	}
 
 	/**
@@ -67,15 +73,21 @@ class FileMapper extends QBMapper {
 	 *
 	 * @return Entity Row of table libresign_file
 	 */
-	public function getByFileId(int $fileId) {
-		$qb = $this->db->getQueryBuilder();
+	public function getByFileId(?int $fileId = null) {
+		if (!$fileId) {
+			return array_values($this->file)[0];
+		}
+		if (empty($this->file[$fileId]) || ($this->file[$fileId]->getNodeId() !== $fileId)) {
+			$qb = $this->db->getQueryBuilder();
 
-		$qb->select('*')
-			->from($this->getTableName())
-			->where(
-				$qb->expr()->eq('node_id', $qb->createNamedParameter($fileId, IQueryBuilder::PARAM_INT))
-			);
+			$qb->select('*')
+				->from($this->getTableName())
+				->where(
+					$qb->expr()->eq('node_id', $qb->createNamedParameter($fileId, IQueryBuilder::PARAM_INT))
+				);
 
-		return $this->findEntity($qb);
+			$this->file[$fileId] = $this->findEntity($qb);
+		}
+		return $this->file[$fileId];
 	}
 }

@@ -5,7 +5,7 @@
 				<div class="user-name">
 					<div class="icon-sign icon-user" />
 					<span class="name">
-						{{ sign.displayName ? sign.displayName : t('libresign', 'Account not exist') }}
+						{{ getName(sign) }}
 					</span>
 				</div>
 				<div class="content-status">
@@ -17,15 +17,22 @@
 						<div class="icon icon-calendar-dark" />
 						<span v-if="sign.sign_date">{{ timestampsToDate(sign.sign_date) }}</span>
 					</div>
-					<div v-if="showSignButton" v-show="showButton(sign)" class="container-dot container-btn">
-						<button class="primary" @click="changeToSignTab">
-							{{ t('libresign', 'Sign') }}
-						</button>
-					</div>
-					<div v-show="!showButton(sign)" class="container-dot container-btn">
-						<button :class="!disableBtn ? 'secondary' : 'loading'" :disabled="disableBtn" @click="sendNotify(sign.email)">
-							{{ t('libresign', 'Resubmit request') }}
-						</button>
+					<div v-if="showDivButtons(sign)" class="container-actions">
+						<div v-if="showSignButton(sign)" class="container-dot container-btn">
+							<button class="primary" @click="changeToSignTab">
+								{{ t('libresign', 'Sign') }}
+							</button>
+						</div>
+						<div v-show="showNotifyButton(sign)" class="container-dot container-btn">
+							<button :class="!disableBtn ? 'secondary' : 'loading'" :disabled="disableBtn" @click="sendNotify(sign.email)">
+								{{ t('libresign', 'Send reminder') }}
+							</button>
+						</div>
+						<div>
+							<Actions v-if="showDelete(sign)">
+								<ActionButton icon="icon-delete" @click="deleteUserRequest(sign)" />
+							</Actions>
+						</div>
 					</div>
 				</div>
 			</li>
@@ -40,14 +47,14 @@ import { mapState } from 'vuex'
 import { generateUrl } from '@nextcloud/router'
 import { showError, showSuccess } from '@nextcloud/dialogs'
 
+import Actions from '@nextcloud/vue/dist/Components/Actions'
+import ActionButton from '@nextcloud/vue/dist/Components/ActionButton'
+
 export default {
 	name: 'SignaturesTab',
-	props: {
-		showSignButton: {
-			type: Boolean,
-			required: false,
-			default: true,
-		},
+	components: {
+		Actions,
+		ActionButton,
 	},
 	data() {
 		return {
@@ -66,6 +73,22 @@ export default {
 				return item.sign_date ? 'signed' : 'pending'
 			} else {
 				return 'pending'
+			}
+		},
+		update() {
+			this.$emit('update')
+		},
+		async deleteUserRequest(user) {
+			const result = confirm(t('libresign', 'Are ou sure you want to exclude user {email} from the request?', { email: user.email }))
+			if (result === true) {
+				try {
+					const response = await axios.delete(generateUrl(`/apps/libresign/api/0.1/sign/file_id/${this.fileId}/${user.signatureId}`))
+
+					this.update()
+					showSuccess(response.data.message)
+				} catch (err) {
+					showError(err)
+				}
 			}
 		},
 		async sendNotify(email) {
@@ -90,6 +113,16 @@ export default {
 		uppercaseString(string) {
 			return string[0].toUpperCase() + string.substr(1)
 		},
+		getName(user) {
+			if (user.displayName) {
+				return user.displayName
+			} else if (user.fullName) {
+				return user.fullName
+			} else if (user.email) {
+				return user.email
+			}
+			return t('libresign', 'Account not exist')
+		},
 		timestampsToDate(date) {
 			return format(new Date(date), 'dd/MM/yyyy')
 		},
@@ -98,6 +131,32 @@ export default {
 		},
 		changeToSignTab() {
 			this.$emit('change-sign-tab', 'sign')
+		},
+		showSignButton(user) {
+			if (user.me) {
+				if (user.sign_date) {
+					return false
+				}
+				return true
+			}
+		},
+		showNotifyButton(user) {
+			if (!user.me) {
+				if (user.sign_date) {
+					return false
+				}
+				return true
+			}
+			return false
+		},
+		showDelete(user) {
+			if (user.sign_date) {
+				return false
+			}
+			return true
+		},
+		showDivButtons(user) {
+			return !!(this.showSignButton(user) || this.showNotifyButton(user) || this.showDelete(user))
 		},
 	},
 }
@@ -133,6 +192,15 @@ export default {
 
 				.container-btn {
 					width: 50% !important;
+				}
+
+				.container-actions{
+					display: flex;
+					flex-direction: row;
+					justify-content: space-between;
+					align-items: center;
+					width: 100%;
+					padding: 0 10px;
 				}
 
 				@media screen and (max-width: 1600px) {

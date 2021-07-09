@@ -420,7 +420,14 @@ final class AccountServiceTest extends \OCA\Libresign\Tests\Unit\TestCase {
 	public function testGenerateCertificateWithInvalidData() {
 		$this->cfsslHandler
 			->method('__call')
-			->will($this->returnValue($this->cfsslHandler));
+			->with(
+				$this->callback(function ($functionName, $value = null) {
+					return $this->cfsslHandlerCallbackToGetSetArguments($functionName, $value);
+				})
+			)
+			->will($this->returnCallback(function ($functionName) {
+				return $this->cfsslHandlerCallbackToGetSetReturn($functionName);
+			}));
 		$this->expectErrorMessage('Failure on generate certificate');
 		$this->accountService->generateCertificate('uid', 'password', 'username');
 	}
@@ -439,12 +446,36 @@ final class AccountServiceTest extends \OCA\Libresign\Tests\Unit\TestCase {
 
 		$this->cfsslHandler
 			->method('__call')
-			->will($this->returnValue($this->cfsslHandler));
+			->with(
+				$this->callback(function ($functionName, $value = null) {
+					return $this->cfsslHandlerCallbackToGetSetArguments($functionName, $value);
+				})
+			)
+			->will($this->returnCallback(function ($functionName) {
+				return $this->cfsslHandlerCallbackToGetSetReturn($functionName);
+			}));
 		$this->cfsslHandler
 			->method('generateCertificate')
 			->will($this->returnValue('raw content of pfx file'));
 		$actual = $this->accountService->generateCertificate('uid', 'password', 'username');
 		$this->assertInstanceOf('\OCP\Files\File', $actual);
+	}
+
+	public function cfsslHandlerCallbackToGetSetArguments($functionName, $value = null) {
+		if (strpos($functionName, 'set') === 0) {
+			$this->cfsslHandlerBuffer[substr($functionName, 3)] = $value;
+		}
+		return true;
+	}
+
+	public function cfsslHandlerCallbackToGetSetReturn($functionName) {
+		if (strpos($functionName, 'set') === 0) {
+			return $this->cfsslHandler;
+		}
+		if (isset($this->cfsslHandlerBuffer[substr($functionName, 3)])) {
+			return $this->cfsslHandlerBuffer[substr($functionName, 3)];
+		}
+		return null;
 	}
 
 	public function testGenerateCertificateAndSuccessfullySavedToANewFile() {

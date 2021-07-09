@@ -113,23 +113,16 @@ class ValidateHelper {
 	}
 
 	private function getLibreSignFileByNodeId(int $nodeId): \OCP\Files\File {
-		if (empty($this->file)) {
-			$libresignFile = $this->getLibreSignFile($nodeId);
+		if (empty($this->file[$nodeId])) {
+			$libresignFile = $this->fileMapper->getByFileId($nodeId);
 
 			$userFolder = $this->root->getUserFolder($libresignFile->getUserId());
-			$this->file = $userFolder->getById($nodeId);
-			if (!empty($this->file)) {
-				$this->file = $this->file[0];
+			$this->file[$nodeId] = $userFolder->getById($nodeId);
+			if (!empty($this->file[$nodeId])) {
+				$this->file[$nodeId] = $this->file[$nodeId][0];
 			}
 		}
-		return $this->file;
-	}
-
-	public function getLibreSignFile(?int $nodeId = null): ?LibresignFile {
-		if (empty($this->libresignFile) && $nodeId) {
-			$this->libresignFile = $this->fileMapper->getByFileId($nodeId);
-		}
-		return $this->libresignFile;
+		return $this->file[$nodeId];
 	}
 
 	public function canRequestSign(IUser $user) {
@@ -144,7 +137,7 @@ class ValidateHelper {
 	}
 
 	public function iRequestedSignThisFile(IUser $user, int $nodeId) {
-		$libresignFile = $this->getLibreSignFile($nodeId);
+		$libresignFile = $this->fileMapper->getByFileId($nodeId);
 		if ($libresignFile->getUserId() !== $user->getUID()) {
 			throw new \Exception($this->l10n->t('You are not the signer request for this file'));
 		}
@@ -163,7 +156,7 @@ class ValidateHelper {
 	}
 
 	public function signerWasAssociated(array $signer) {
-		$libresignFile = $this->getLibreSignFile();
+		$libresignFile = $this->fileMapper->getByFileId();
 		if (!$libresignFile) {
 			throw new \Exception($this->l10n->t('File not loaded'));
 		}
@@ -175,15 +168,35 @@ class ValidateHelper {
 	}
 
 	public function notSigned(array $signer) {
-		$libresignFile = $this->getLibreSignFile();
+		$libresignFile = $this->fileMapper->getByFileId();
 		if (!$libresignFile) {
 			throw new \Exception($this->l10n->t('File not loaded'));
 		}
 		$signatures = $this->fileUserMapper->getByFileUuid($libresignFile->getUuid());
-		$exists = array_filter($signatures, fn ($s) => $s->getEmail() === $signer['email']);
-		$signed = $exists[0]->getSigned();
-		if ($signed) {
-			throw new \Exception($this->l10n->t('%s already signed this file', $signer['email']));
+		$exists = array_filter($signatures, fn ($s) => $s->getEmail() === $signer['email'] && $s->getSigned());
+		if (!$exists) {
+			return;
+		}
+		$firstSigner = array_values($exists)[0];
+		if ($firstSigner->getDisplayName()) {
+			throw new \Exception($this->l10n->t('%s already signed this file', $firstSigner->getDisplayName()));
+		}
+		throw new \Exception($this->l10n->t('%s already signed this file', $firstSigner->getDisplayName()));
+	}
+
+	public function validateFileUuid(array $data) {
+		try {
+			$this->fileMapper->getByUuid($data['uuid']);
+		} catch (\Throwable $th) {
+			throw new \Exception($this->l10n->t('Invalid UUID file'));
+		}
+	}
+
+	public function validateIsSignerOfFile(int $signatureId, int $fileId) {
+		try {
+			$this->fileUserMapper->getByFileIdAndFileUserId($fileId, $signatureId);
+		} catch (\Throwable $th) {
+			throw new \Exception($this->l10n->t('Signer not associated to this file'));
 		}
 	}
 }

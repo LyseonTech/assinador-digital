@@ -80,6 +80,12 @@ export default {
 	width: 100%;
 	height: 100%;
 
+	img {
+		position: absolute;
+		top: 10%;
+		left: 56px;
+	}
+
 	h1{
 		position: absolute;
 		top: 10%;
