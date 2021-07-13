@@ -122,17 +122,20 @@
 </template>
 
 <script>
+// Utils
 import md5 from 'crypto-js/md5'
 import { loadState } from '@nextcloud/initial-state'
-import axios from '@nextcloud/axios'
-import { translate as t } from '@nextcloud/l10n'
+import { showError, showSuccess } from '@nextcloud/dialogs'
+
+// Serviice
+import { createUser } from '@/services/api/user'
+
+// Components
 import Content from '@nextcloud/vue/dist/Components/Content'
 import Avatar from '@nextcloud/vue/dist/Components/Avatar'
-import { showError, showSuccess } from '@nextcloud/dialogs'
-import { generateUrl } from '@nextcloud/router'
 
 export default {
-	name: 'CreateUser',
+	name: 'Create',
 	components: {
 		Content,
 		Avatar,
@@ -212,7 +215,7 @@ export default {
 		async createUser() {
 			this.hasLoading = true
 			try {
-				const response = await axios.post(generateUrl(`/apps/libresign/api/0.1/account/create/${this.$route.params.uuid}`), {
+				const response = await createUser({
 					email: this.email,
 					password: this.pass,
 					signPassword: this.pfx,
@@ -320,5 +323,5 @@ export default {
 </script>
 
 <style lang="scss" scoped>
-@import '../assets/styles/CreateUser.scss';
+@import './styles.scss';
 </style>

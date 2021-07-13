@@ -42,13 +42,16 @@
 </template>
 
 <script>
+// Utils
+import { getCurrentUser } from '@nextcloud/auth'
+import { mapGetters } from 'vuex'
+
+// Components
 import Modal from '@nextcloud/vue/dist/Components/Modal'
 import Avatar from '@nextcloud/vue/dist/Components/Avatar'
 import Content from '@nextcloud/vue/dist/Components/Content'
-import { getCurrentUser } from '@nextcloud/auth'
-import { mapGetters } from 'vuex'
-import CreatePassword from './CreatePassword.vue'
-import ResetPassword from './ResetPassword.vue'
+import CreatePassword from '@/Components/Password/Create/Create.vue'
+import ResetPassword from '@/Components/Password/Reset/Reset.vue'
 
 export default {
 	name: 'Account',
@@ -67,7 +70,7 @@ export default {
 	},
 	computed: {
 		...mapGetters({
-			hasSignature: 'getHasPfx',
+			hasSignature: 'user/getPfx',
 		}),
 	},
 	methods: {

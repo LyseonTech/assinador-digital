@@ -27,13 +27,18 @@
 </template>
 
 <script>
-import ListItem from '../ListItem'
-import { validateEmail } from '../../utils/validators'
+// Utils
+import { validateEmail } from '@/utils/validators'
+
+// Components
+import ListItem from '@/Components/ListItem'
+
 export default {
 	name: 'Request',
 	components: {
 		ListItem,
 	},
+
 	props: {
 		fileinfo: {
 			type: Object,
@@ -46,6 +51,7 @@ export default {
 			required: false,
 		},
 	},
+
 	data() {
 		return {
 			values: [],
@@ -53,6 +59,7 @@ export default {
 			description: '',
 		}
 	},
+
 	computed: {
 		hasUsers(val) {
 			return !(this.values.length <= 0)
@@ -61,20 +68,24 @@ export default {
 			return validateEmail(this.email)
 		},
 	},
+
 	watch: {
 		items(newVal) {
 			this.values = newVal
 		},
 	},
+
 	methods: {
 		removeValue(value) {
 			this.values = this.values.filter(ft => {
 				return ft !== value
 			})
 		},
+
 		emitDelete(value) {
 			this.$emit('request:delete', value)
 		},
+
 		addUser() {
 			this.values.push({
 				email: this.email,
@@ -82,13 +93,16 @@ export default {
 			})
 			this.clearForm()
 		},
+
 		clearForm() {
 			this.email = ''
 			this.description = ''
 		},
-		async send(param) {
+
+		send(param) {
 			this.$emit('request:signatures', this.values)
 		},
+
 		clearList() {
 			this.values = []
 		},

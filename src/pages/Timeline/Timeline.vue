@@ -25,19 +25,23 @@
 		<Sidebar v-if="sidebar"
 			ref="sidebar"
 			:loading="loading"
-			@update="getData"
+			@update="getAllFiles"
 			@sign:document="signDocument"
 			@closeSidebar="closeSidebar" />
 	</div>
 </template>
 
 <script>
-import axios from '@nextcloud/axios'
-import { generateUrl } from '@nextcloud/router'
-import { mapGetters, mapState } from 'vuex'
-import File from '../Components/File'
-import Sidebar from '../Components/File/Sidebar.vue'
-import { showError, showSuccess } from '@nextcloud/dialogs'
+// Utils
+import { mapState, mapActions } from 'vuex'
+import { showError } from '@nextcloud/dialogs'
+
+// Services
+import { signInDocument } from '@/services/api/file'
+
+// Components
+import File from '@/Components/File/File.vue'
+import Sidebar from '@/Components/File/Sidebar.vue'
 
 export default {
 	name: 'Timeline',
@@ -56,9 +60,8 @@ export default {
 
 	computed: {
 		...mapState({
-			files: state => state.files,
+			files: state => state.file.files,
 		}),
-		...mapGetters(['getFiles']),
 		pendingFilter() {
 			return this.files.slice().filter(
 				(a) => (a.status === 'pending')).sort(
@@ -88,10 +91,13 @@ export default {
 	},
 
 	created() {
-		this.getData()
+		this.$store.dispatch('file/getAllFiles')
+		this.$store.dispatch('user/getMe')
+
 	},
 
 	methods: {
+		...mapActions('file', ['getAllFiles']),
 		changeFilter(filter) {
 			switch (filter) {
 			case 1:
@@ -112,20 +118,12 @@ export default {
 				break
 			}
 		},
-		async getData() {
-			try {
-				const response = await axios.get(generateUrl('/apps/libresign/api/0.1/file/list'))
-				this.$store.commit('setFiles', response.data.data)
-			} catch (err) {
-				showError('An error occurred while fetching the files')
-			}
-		},
 		openSidebar() {
 			this.sidebar = true
 		},
 		setSidebar(objectFile) {
 			this.closeSidebar()
-			this.$store.commit('setCurrentFile', objectFile)
+			this.$store.dispatch('file/setCurrentFile', objectFile)
 			this.openSidebar()
 		},
 		closeSidebar() {
@@ -134,13 +132,10 @@ export default {
 		async signDocument(param) {
 			try {
 				this.loading = true
-				const response = await axios.post(generateUrl(`/apps/libresign/api/0.1/sign/file_id/${param.fileId}`), {
-					password: param.password,
-				})
-				this.getData()
+				await signInDocument(param.password, param.fileId)
+				this.$store.dispatch('file/getAllFiles')
 				this.closeSidebar()
 				this.loading = false
-				return showSuccess(response.data.message)
 			} catch (err) {
 				this.loading = false
 				err.response.data.errors.map(

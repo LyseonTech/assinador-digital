@@ -42,16 +42,16 @@
 								trigger: 'false',
 								show: !havePfx
 							}"
-							:disabled="!havePfx"
+							:disabled="disableInput"
 							type="password">
-						<a class="forgot" @click="handleModal(true)">
+						<a :class="havePfx ? 'forgot' : 'create'" @click="handleModal(true)">
 							{{ havePfx ? t('libresign', 'Forgot your password?') : t('libresign', 'Create password to sign document') }}
 						</a>
 						<button
 							type="button"
 							:value="buttonValue"
 							:class="!updating ? 'primary' : 'primary loading'"
-							:disabled="disableButton"
+							:disabled="disableBtn"
 							@click="sign">
 							{{ t('libresign', 'Sign the document.') }}
 						</button>
@@ -71,14 +71,13 @@
 </template>
 
 <script>
-import { showError, showSuccess } from '@nextcloud/dialogs'
+// Components
 import Modal from '@nextcloud/vue/dist/Components/Modal'
-import ResetPassword from '../../views/ResetPassword.vue'
-import CreatePassword from '../../views/CreatePassword.vue'
-import axios from '@nextcloud/axios'
-import Image from '../../assets/images/application-pdf.png'
-import { generateUrl } from '@nextcloud/router'
-import { translate as t } from '@nextcloud/l10n'
+import ResetPassword from '@/Components/Password/Reset/Reset.vue'
+import CreatePassword from '@/Components/Password/Create/Create.vue'
+import Image from '@/assets/images/application-pdf.png'
+import { signInDocumentUuid } from '@/services/api/file'
+import { getMe } from '@/services/api/user'
 
 export default {
 	name: 'Description',
@@ -123,6 +122,24 @@ export default {
 		hasSavePossible() {
 			return !!this.password
 		},
+		disableInput() {
+			return !this.havePfx || this.updating
+		},
+		disableBtn() {
+			if (!this.havePfx) {
+				return true
+			}
+			if (this.disableButton === true) {
+				return true
+			}
+			return false
+		},
+	},
+
+	watch: {
+		havePfx(oldVal, newVal) {
+
+		},
 	},
 	created() {
 		this.getMe()
@@ -134,31 +151,34 @@ export default {
 			this.disableButton = true
 
 			try {
-				const response = await axios.post(
-					generateUrl(`/apps/libresign/api/0.1/sign/uuid/${this.uuid}`),
-					{
-						password: this.password,
-					}
-				)
+				const response = await signInDocumentUuid(this.password, this.uuid)
+				console.info('paage: ', response)
 
-				showSuccess(response.data.message)
 				if (response.data.action === 350) {
 					this.$router.push({ name: 'DefaultPageSuccess', uuid: this.uuid })
 				}
-				console.info(this.$store)
+
+				if (response.data.action === 400 && response.data.errors) {
+					this.havePfx = false
+					this.disableButton = true
+				}
+
 				this.updating = false
 				this.disableButton = true
 			} catch (err) {
-				showError(err.response.data.errors[0])
 				this.updating = false
-				this.disableButton = false
+				this.disableButton = true
+
 			}
 		},
 		changePfx(value) {
 			this.havePfx = value
+			if (value === false) {
+				this.disableButton = true
+			}
 		},
 		async getMe() {
-			const response = await axios.get(generateUrl('/apps/libresign/api/0.1/account/me'))
+			const response = await getMe()
 			this.havePfx = response.data.settings.hasSignatureFile
 		},
 		handleModal(status) {

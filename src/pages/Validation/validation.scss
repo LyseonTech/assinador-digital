@@ -160,8 +160,16 @@ button{
 	margin: 5px 5px 0px 0px;
 	min-height: 50px;
 	width: 330px;
+
+	.data-name{
+		font-weight: bold;
+		font-size: 1rem;
+	}
 	.data-signed {
 		font-size: $date-signed-font;
+	}
+	.data-mail{
+		font-size: 0.8rem;
 	}
 }
 
@@ -194,7 +202,7 @@ button{
 	}
 	.infor {
 		h1 {
-			font-size: $title-font-mobile;	
+			font-size: $title-font-mobile;
 		}
 	}
 	.header {

@@ -15,7 +15,7 @@
 			:name="t('libresign', 'Signatures')"
 			icon="icon-rename"
 			:order="1">
-			<SignaturesTab :items="currentFile.file.signers" @update="update" @change-sign-tab="changeTab" />
+			<SignaturesTab @update="update" @change-sign-tab="changeTab" />
 		</AppSidebarTab>
 		<AppSidebarTab
 			v-if="hasSign"
@@ -24,7 +24,7 @@
 			icon="icon-rename"
 			:order="2">
 			<Sign ref="sign"
-				:pfx="getHasPfx"
+				:pfx="getPfx"
 				:has-loading="loading"
 				@sign:document="emitSign" />
 		</AppSidebarTab>
@@ -32,12 +32,15 @@
 </template>
 
 <script>
+// Utils
+import { mapGetters, mapState } from 'vuex'
+import format from 'date-fns/format'
+
+// Components
 import AppSidebar from '@nextcloud/vue/dist/Components/AppSidebar'
 import AppSidebarTab from '@nextcloud/vue/dist/Components/AppSidebarTab'
-import { mapGetters, mapState } from 'vuex'
 import SignaturesTab from './SignaturesTab.vue'
-import Sign from '../Sign'
-import format from 'date-fns/format'
+import Sign from '@/Components/Sign'
 
 export default {
 	name: 'Sidebar',
@@ -60,27 +63,31 @@ export default {
 		}
 	},
 	computed: {
+		...mapState({
+			currentFile: state => state.file.currentFile,
+		}),
+		...mapGetters({
+			getCurrentFile: 'file/getCurrentFile',
+			getSigners: 'file/getSigners',
+			getPfx: 'user/getPfx',
+		}),
+
 		titleName() {
-			return this.getCurrentFile.file.name ? this.getCurrentFile.file.name : ''
+			return this.getCurrentFile.name ? this.getCurrentFile.name : ''
 		},
 		subTitle() {
 			return t('libresign', 'Requested by {name}, at {date}', {
-				name: this.getCurrentFile.file.requested_by.uid
-					? this.getCurrentFile.file.requested_by.uid
+				name: this.getCurrentFile.requested_by.uid
+					? this.getCurrentFile.requested_by.uid
 					: '',
-				date: format(new Date(this.getCurrentFile.file.request_date), 'dd/MM/yyyy'),
+				date: format(new Date(this.getCurrentFile.request_date), 'dd/MM/yyyy'),
 			})
 		},
 		hasSign() {
-			return this.getCurrentFile.file.signers.filter(
+			return this.getSigners.filter(
 				signer => signer.me !== false && signer.sign_date === null
 			).length > 0
 		},
-		...mapState({
-			currentFile: state => state.currentFile,
-			sidebar: state => state.sidebar,
-		}),
-		...mapGetters(['getCurrentFile', 'getSidebar', 'getHasPfx']),
 	},
 	methods: {
 		closeSidebar() {
@@ -93,7 +100,7 @@ export default {
 			this.$refs.sign.clearInput()
 		},
 		emitSign(password) {
-			this.$emit('sign:document', { password, fileId: this.getCurrentFile.file.file.nodeId })
+			this.$emit('sign:document', { password, fileId: this.getCurrentFile.file.nodeId })
 		},
 		updateActive(e) {
 			this.changeTab(e)

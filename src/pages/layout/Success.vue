@@ -35,10 +35,10 @@
 </template>
 
 <script>
-import icon from '../assets/images/logo-white.png'
+import icon from '@/assets/images/logo-white.png'
 import { translate as t } from '@nextcloud/l10n'
 export default {
-	name: 'DefaultPageSuccess',
+	name: 'Success',
 	props: {
 		uuid: {
 			type: String,
@@ -67,7 +67,7 @@ export default {
 }
 
 #bg{
-	background-image: url('../../img/frame4.png');
+	background-image: url('../../../img/frame4.png');
 	box-sizing: border-box;
 	-webkit-backgroung-size: cover;
 	-moz-background-size: cover;

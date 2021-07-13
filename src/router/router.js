@@ -21,67 +21,74 @@
  */
 
 import { translate as t } from '@nextcloud/l10n'
-import { loadState } from '@nextcloud/initial-state'
-import SelectAction from '../helpers/SelectAction'
+import SelectAction from '@/helpers/SelectAction'
+import store from '@/store'
 
-const libresignVar = JSON.parse(loadState('libresign', 'config'))
+store.dispatch('user/getSettings')
 
 const routes = [
 	{
-		path: '/timeline/sign',
-		component: () => import('../views/Timeline'),
+		path: '#timeline/files',
+		component: () => import('@/pages/Timeline/Timeline'),
 		name: 'signFiles',
 	}, {
-		path: '/request',
-		component: () => import('../views/Request'),
+		path: '#request',
+		component: () => import('@/pages/Request/Request'),
 		name: 'requestFiles',
 	}, {
 		path: '/sign/:uuid',
-		redirect: { name: SelectAction(libresignVar.action) },
+		redirect: { name: SelectAction(store.getters['user/getAction']) },
 	}, {
-		path: '/sign/:uuid',
-		component: () => import('../views/SignPDF'),
+		path: '/sign/:uuid#sign',
+		component: () => import('@/pages/Sign/SignPDF'),
 		props: (route) => ({ uuid: route.params.uuid, redirect: false }),
 		name: 'SignPDF',
 	}, {
-		path: '/sign/:uuid',
-		component: () => import('../views/CreateUser'),
+		path: '/sign/:uuid#create',
+		component: () => import('@/pages/User/Create'),
 		name: 'CreateUser',
 		props: (route) => ({
 			messageToast: t('libresign', 'You need to create an account to sign this file.'),
 		}),
 	}, {
-		path: '/validation',
-		component: () => import('../views/Validation'),
-		name: 'validation',
-	}, {
-		path: '/validation/:uuid',
-		component: () => import('../views/Validation'),
-		name: 'validationFile',
-		props: (route) => ({
-			uuid: route.params.uuid,
-		}),
-	}, {
-		path: '/sign/:uuid/error',
-		component: () => import('../views/DefaultPageError'),
+		path: '/sign/:uuid#error',
+		component: () => import('@/pages/layout/Error'),
 		name: 'DefaultPageError',
 	}, {
-		path: '/sign/:uuid/success',
-		component: () => import('../views/DefaultPageSuccess'),
+		path: '/sign/:uuid#success',
+		component: () => import('@/pages/layout/Success'),
 		name: 'DefaultPageSuccess',
 		props: (route) => ({ uuid: route.params.uuid }),
 	}, {
-		path: '/reset-password',
-		component: () => import('../views/ResetPassword'),
-		name: 'ResetPassword',
+		path: '#validation',
+		component: () => import('@/pages/Validation/Validation'),
+		name: 'validation',
+		children: [
+			{
+				path: ':uuid',
+				component: () => import('@/pages/Validation/Validation'),
+				name: 'validationFile',
+				props: (route) => ({
+					uuid: route.params.uuid,
+				}),
+			},
+		],
 	}, {
 		path: '#account',
-		component: () => import('../views/Account'),
+		component: () => import('@/pages/User/Account/Account.vue'),
 		name: 'Account',
-	}, {
-		path: '/create-password',
-		component: () => import('../views/CreatePassword'),
-		name: 'CreatePassword',
+		children: [
+			{
+				path: 'reset-password',
+				component: () => import('@/Components/Password/Reset'),
+				name: 'ResetPassword',
+			}, {
+				path: 'create-password',
+				component: () => import('@/Components/Password/Create'),
+				name: 'CreatePassword',
+
+			},
+		],
 	},
 ]
 

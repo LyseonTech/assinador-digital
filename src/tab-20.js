@@ -21,7 +21,7 @@
  *
  */
 import Vue from 'vue'
-import LibresignTab from './views/LibresignTab20'
+import LibresignTab from '@/pages/FileTab/LibresignTab20'
 import VTooltip from '@nextcloud/vue/dist/Directives/Tooltip'
 
 import '@nextcloud/dialogs/styles/toast.scss'

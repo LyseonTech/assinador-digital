@@ -24,23 +24,22 @@
 <template>
 	<div id="container">
 		<div id="viewer" class="content">
-			<PDFViewer :url="pdfData" />
+			<PDFViewer :url="documentData.pdf.url === undefined ? documentData.pdf.base64 : documentData.pdf.url" />
 		</div>
 		<div id="description" class="content">
-			<Description :uuid="uuid" :pdf-name="name" :pdf-description="desc" />
+			<Description :uuid="uuid" :pdf-name="documentData.filename" :pdf-description="documentData.description" />
 		</div>
 	</div>
 </template>
 
 <script>
-import Description from '../Components/Description'
-import PDFViewer from '../Components/PDFViewer'
+import Description from '@/Components/Description'
+import PDFViewer from '@/Components/PDFViewer'
+import { mapGetters } from 'vuex'
 
 export default {
 	name: 'SignPDF',
-
 	components: { Description, PDFViewer },
-
 	props: {
 		uuid: {
 			type: String,
@@ -55,19 +54,10 @@ export default {
 			user: '',
 		}
 	},
-
-	created() {
-		this.getData()
-	},
-
-	methods: {
-		getData() {
-			this.name = this.$store.getters.getPdfData.filename
-			this.desc = this.$store.getters.getPdfData.description
-			this.pdfData = this.$store.getters.getPdfData.url
-				? this.$store.getters.getPdfData.url
-				: this.$store.getters.getPdfData.base64
-		},
+	computed: {
+		...mapGetters({
+			documentData: 'file/getFileData',
+		}),
 	},
 }
 </script>

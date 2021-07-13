@@ -107,15 +107,21 @@
 </template>
 
 <script>
+// Services
+import { getMe } from '@/services/api/user'
+import { getInfo, signInDocument } from '@/services/api/file'
+import { deleteSignatureRequest, request, sendNotification } from '@/services/api/signatures'
+
+// Toast
+import { showError, showSuccess } from '@nextcloud/dialogs'
+
+// Components
 import AppSidebar from '@nextcloud/vue/dist/Components/AppSidebar'
 import Actions from '@nextcloud/vue/dist/Components/Actions'
 import ActionButton from '@nextcloud/vue/dist/Components/ActionButton'
 import AppSidebarTab from '@nextcloud/vue/dist/Components/AppSidebarTab'
-import { showError, showSuccess } from '@nextcloud/dialogs'
-import axios from '@nextcloud/axios'
-import { generateUrl } from '@nextcloud/router'
-import Sign from '../Components/Sign'
-import Request from '../Components/Request'
+import Sign from '@/Components/Sign'
+import Request from '@/Components/Request'
 
 export default {
 	name: 'LibresignTab',
@@ -232,14 +238,14 @@ export default {
 			return t('libresign', 'Account not exist')
 		},
 		async getMe() {
-			const response = await axios.get(generateUrl('/apps/libresign/api/0.1/account/me'))
+			const response = await getMe()
 			this.hasPfx = response.data.settings.hasSignatureFile
 			this.canRequestSign = response.data.settings.canRequestSign
 		},
 
 		async getInfo() {
 			try {
-				const response = await axios.get(generateUrl(`/apps/libresign/api/0.1/file/validate/file_id/${this.fileInfo.id}`))
+				const response = await getInfo(this.fileInfo.id)
 				this.canSign = response.data.settings.canSign
 				if (response.data.signers) {
 					this.haveRequest = true
@@ -262,35 +268,28 @@ export default {
 			try {
 				this.loadingInput = true
 				this.disabledSign = true
-				const response = await axios.post(generateUrl(`/apps/libresign/api/0.1/sign/file_id/${this.fileInfo.id}`), {
-					password: param,
-				})
+				await signInDocument(param, this.fileInfo.id)
 				this.getInfo()
 				this.option('sign')
 				this.option('signatures')
 				this.canSign = false
 				this.loadingInput = false
-				return showSuccess(response.data.message)
 			} catch (err) {
-				if (err.response.data.action === 400) {
-					window.location.href = generateUrl('/apps/libresign/reset-password?redirect=CreatePassword')
-				}
 				this.disabledSign = false
 				this.loadingInput = false
-				return showError(err.response.data.errors[0])
 			}
 		},
+
 		async deleteUserRequest(user) {
 			const result = confirm(t('libresign', 'Are you sure you want to exclude user {email} from the request?', { email: user.email }))
 			if (result === true) {
 				try {
-					const response = await axios.delete(generateUrl(`/apps/libresign/api/0.1/sign/file_id/${this.fileInfo.id}/${user.signatureId}`))
+					await deleteSignatureRequest(this.fileInfo.id, user.signatureId)
 					if (this.signers.length <= 0) {
 						this.option('signatures')
 					}
 
 					this.getInfo()
-					showSuccess(response.data.message)
 				} catch (err) {
 					showError(err)
 				}
@@ -299,14 +298,7 @@ export default {
 
 		async resendEmail(email) {
 			try {
-				const response = await axios.post(generateUrl('/apps/libresign/api/0.1/notify/signers'), {
-					fileId: this.fileInfo.id,
-					signers: [
-						{
-							email,
-						},
-					],
-				})
+				const response = await sendNotification(email, this.fileInfo.id)
 
 				showSuccess(response.data.message)
 			} catch (err) {
@@ -321,32 +313,20 @@ export default {
 			}
 		},
 
-		async requestSignatures(users, fileInfo) {
+		async requestSignatures(users) {
 			try {
-				if (this.haveRequest) {
-					const response = await axios.patch(generateUrl('/apps/libresign/api/0.1/sign/register'), {
-						file: {
-							fileId: this.fileInfo.id,
-						},
-						users,
-					})
-					this.option('request')
-					this.clearRequestList()
-					this.getInfo()
-					return showSuccess(response.data.message)
-				}
+				const update = this.haveRequest ? 'update' : 'new'
 
-				const response = await axios.post(generateUrl('/apps/libresign/api/0.1/sign/register'), {
-					file: {
-						fileId: this.fileInfo.id,
-					},
-					name: this.fileInfo.name.split('.pdf')[0],
+				await request(
 					users,
-				})
+					this.fileInfo.id,
+					this.fileInfo.name.split('.pdf')[0],
+					update,
+				)
+
 				this.option('request')
 				this.clearRequestList()
 				this.getInfo()
-				return showSuccess(response.data.message)
 			} catch (err) {
 				if (err.response.data.errors) {
 					return showError(err.response.data.errors[0])
@@ -367,9 +347,11 @@ export default {
 				this.signaturesShow = !this.signaturesShow
 			}
 		},
+
 		clearSiginPassword() {
 			this.$refs.sign.clearInput()
 		},
+
 		clearRequestList() {
 			this.$refs.request.clearList()
 		},

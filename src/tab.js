@@ -24,7 +24,7 @@
 import Vue from 'vue'
 import Vuex from 'vuex'
 import { translate as t, translatePlural as n } from '@nextcloud/l10n'
-import LibresignTab from './views/LibresignTab'
+import LibresignTab from '@/pages/FileTab/LibresignTab'
 import VTooltip from '@nextcloud/vue/dist/Directives/Tooltip'
 
 import '@nextcloud/dialogs/styles/toast.scss'

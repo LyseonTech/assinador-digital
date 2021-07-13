@@ -1,7 +1,7 @@
 <template>
 	<div class="container-signatures-tab">
 		<ul>
-			<li v-for="sign in signers" :key="sign.uid">
+			<li v-for="sign in getSigners" :key="sign.uid">
 				<div class="user-name">
 					<div class="icon-sign icon-user" />
 					<span class="name">
@@ -16,6 +16,10 @@
 					<div class="container-dot">
 						<div class="icon icon-calendar-dark" />
 						<span v-if="sign.sign_date">{{ timestampsToDate(sign.sign_date) }}</span>
+					</div>
+					<div v-if="sign.email" class="container-dot">
+						<div class="icon icon-mail" />
+						<span>{{ sign.email }}</span>
 					</div>
 					<div v-if="showDivButtons(sign)" class="container-actions">
 						<div v-if="showSignButton(sign)" class="container-dot container-btn">
@@ -41,12 +45,14 @@
 </template>
 
 <script>
-import axios from '@nextcloud/axios'
+// Utils
 import { format } from 'date-fns'
-import { mapState } from 'vuex'
-import { generateUrl } from '@nextcloud/router'
-import { showError, showSuccess } from '@nextcloud/dialogs'
+import { mapGetters } from 'vuex'
 
+// Services
+import { deleteSignatureRequest, sendNotification } from '@/services/api/signatures'
+
+// Components
 import Actions from '@nextcloud/vue/dist/Components/Actions'
 import ActionButton from '@nextcloud/vue/dist/Components/ActionButton'
 
@@ -62,10 +68,7 @@ export default {
 		}
 	},
 	computed: {
-		...mapState({
-			signers: state => state.currentFile.file.signers,
-			fileId: state => state.currentFile.file.file.nodeId,
-		}),
+		...mapGetters('file', ['getSigners', 'getCurrentFile']),
 	},
 	methods: {
 		hasStatus(item) {
@@ -75,44 +78,39 @@ export default {
 				return 'pending'
 			}
 		},
+
 		update() {
 			this.$emit('update')
 		},
+
 		async deleteUserRequest(user) {
 			const result = confirm(t('libresign', 'Are you sure you want to exclude user {email} from the request?', { email: user.email }))
 			if (result === true) {
-				try {
-					const response = await axios.delete(generateUrl(`/apps/libresign/api/0.1/sign/file_id/${this.fileId}/${user.signatureId}`))
-
-					this.update()
-					showSuccess(response.data.message)
-				} catch (err) {
-					showError(err)
-				}
+				await deleteSignatureRequest(
+					this.getCurrentFile.file.nodeId,
+					user.signatureId,
+				)
+				this.update()
 			}
 		},
+
 		async sendNotify(email) {
 			try {
 				this.disableBtn = true
-				const response = await axios.post(generateUrl('/apps/libresign/api/0.1/notify/signers'), {
-					fileId: this.fileId,
-					signers: [
-						{
-							email,
-						},
-					],
-				})
+				await sendNotification(
+					email,
+					this.getCurrentFile.file.nodeId,
+				)
 				this.disableBtn = false
-				showSuccess(response.data.message)
 			} catch (err) {
-				console.error(err)
 				this.disableBtn = false
-				showError(err)
 			}
 		},
+
 		uppercaseString(string) {
 			return string[0].toUpperCase() + string.substr(1)
 		},
+
 		getName(user) {
 			if (user.displayName) {
 				return user.displayName
@@ -123,15 +121,19 @@ export default {
 			}
 			return t('libresign', 'Account not exist')
 		},
+
 		timestampsToDate(date) {
-			return format(new Date(date), 'dd/MM/yyyy')
+			return format(new Date(date), 'dd/MM/yyyy HH:mm')
 		},
+
 		showButton(signPerson) {
 			return !!(signPerson.me && !signPerson.sign_date)
 		},
+
 		changeToSignTab() {
 			this.$emit('change-sign-tab', 'sign')
 		},
+
 		showSignButton(user) {
 			if (user.me) {
 				if (user.sign_date) {
@@ -140,6 +142,7 @@ export default {
 				return true
 			}
 		},
+
 		showNotifyButton(user) {
 			if (!user.me) {
 				if (user.sign_date) {
@@ -149,12 +152,14 @@ export default {
 			}
 			return false
 		},
+
 		showDelete(user) {
 			if (user.sign_date) {
 				return false
 			}
 			return true
 		},
+
 		showDivButtons(user) {
 			return !!(this.showSignButton(user) || this.showNotifyButton(user) || this.showDelete(user))
 		},
@@ -229,19 +234,16 @@ export default {
 				}
 			}
 
-			.container-dot:first-child{
-				margin-right: 10px;
-			}
-
 			.container-dot{
 				display: flex;
 				flex-direction: row;
 				align-items: center;
 				justify-content: flex-start;
-				width: 32%;
+				/* width: 32%; */
 				margin-bottom: 6px;
 				min-height: 26px;
 				cursor: inherit;
+				margin-right: 10px;
 
 				.dot{
 					width: 10px;

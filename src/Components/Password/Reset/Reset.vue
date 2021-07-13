@@ -1,16 +1,23 @@
+/* eslint-disable no-new */
 <template>
 	<Content app-name="libresign">
-		<form @submit="e => e.preventDefault()">
+		<form @submit="(e) => e.preventDefault()">
 			<header>
-				<h1>{{ t('libresign', 'Password Creation') }}</h1>
-				<p>{{ t('libresign', 'For security reasons, you must create a password to sign the documents. Enter your new password in the field below.') }}</p>
+				<h1>{{ t('libresign', 'Password reset') }}</h1>
+				<p>{{ t('libresign', 'Enter new password and then repeat it') }}</p>
 			</header>
 			<div class="container">
 				<div class="input-group">
-					<label for="password">{{ t('libresign', 'Enter a password') }}</label>
+					<label for="new-password">{{ t('libresign', 'New password') }}</label>
 					<Input v-model="password" type="password" />
 				</div>
-				<button :class="hasLoading? 'btn-load loading primary btn-confirm': 'primary btn-confirm'"
+				<div class="input-group">
+					<label for="repeat-password">{{ t('libresign', 'Repeat password') }}</label>
+					<Input v-model="rPassword" :has-error="!hasEqualPassword" type="password" />
+				</div>
+				<button
+					:disabled="!hableButton"
+					:class="hasLoading ? 'btn-load loading primary btn-confirm' : 'primary btn-confirm'"
 					@click="checkPasswordForConfirm">
 					{{ t('libresign', 'Confirm') }}
 				</button>
@@ -20,29 +27,37 @@
 </template>
 
 <script>
+// Component
 import confirmPassword from '@nextcloud/password-confirmation'
 import Content from '@nextcloud/vue/dist/Components/Content'
-import axios from '@nextcloud/axios'
-import { generateUrl } from '@nextcloud/router'
-import Input from '../Components/Input/Input'
-import { showError, showSuccess } from '@nextcloud/dialogs'
+import Input from '@/Components/Input/Input'
+
+// Services
+import { createSignature } from '@/services/api/user'
 
 export default {
-	name: 'CreatePassword',
+	name: 'Reset',
 	components: {
 		Content,
 		Input,
 	},
 	data() {
 		return {
-			modal: false,
-			hasLoading: false,
 			password: '',
-			hasPfx: false,
+			rPassword: '',
+			hasLoading: false,
 		}
 	},
+	computed: {
+		hableButton() {
+			return !!(this.hasEqualPassword && this.password)
+		},
+		hasEqualPassword(val) {
+			return this.password === this.rPassword
+		},
+	},
 	methods: {
-		checkPasswordForConfirm() {
+		checkPasswordForConfirm(param) {
 			confirmPassword().then(() => {
 				this.send()
 			})
@@ -50,25 +65,12 @@ export default {
 		async send() {
 			this.hasLoading = true
 			try {
-				await axios.post(generateUrl('/apps/libresign/api/0.1/account/signature'), {
-					signPassword: this.password,
-				})
-				showSuccess(t('libresign', 'New password to sign documents has been created'))
+				await createSignature(this.password)
 				this.hasLoading = false
-				if (this.$store) {
-					this.$store.commit('setHasPfx', true)
-				}
-				this.clear()
 				this.$emit('close', true)
-				this.$emit('changePfx', true)
 			} catch (err) {
-				showError(t('libresign', 'Error creating new password, please contact the administrator'))
 				this.hasLoading = false
-				this.$emit('changePfx', false)
 			}
-		},
-		clear() {
-			this.password = ''
 		},
 	},
 }

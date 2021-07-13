@@ -1,4 +1,3 @@
-
 #container{
 	display: flex;
 	flex-direction: row;
@@ -96,7 +95,8 @@ input {
 }
 
 .jumbotron{
-	background-image: url('../../img/bgCreateUser.jpg');
+	// background-image: url('../../img/bgCreateUser.jpg');
+	background-image: url('@/assets/images/bgCreateUser.jpg');
 	background-size: cover;
 	-moz-background-size: cover;
 	transition: background-position-x;
@@ -152,7 +152,8 @@ input {
 	}
 	.jumbotron{
 		background-position-x: 90%;
-		background-image: url('../../img/bgCreateUser-mobile.jpg') !important;
+		// background-image: url('../../img/bgCreateUser-mobile.jpg') !important;
+		background-image: url('@/assets/images/bgCreateUser-mobile.jpg') !important;
 	}
 }
 

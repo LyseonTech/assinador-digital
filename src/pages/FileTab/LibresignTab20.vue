@@ -70,8 +70,8 @@ import AppSidebarTab from '@nextcloud/vue/dist/Components/AppSidebarTab'
 import { showError, showSuccess } from '@nextcloud/dialogs'
 import axios from '@nextcloud/axios'
 import { generateUrl } from '@nextcloud/router'
-import Sign from '../Components/Sign'
-import Request from '../Components/Request'
+import Sign from '@/Components/Sign'
+import Request from '@/Components/Request'
 
 export default {
 	name: 'LibresignTab20',

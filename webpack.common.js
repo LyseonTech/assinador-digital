@@ -1,10 +1,10 @@
 const { merge } = require('webpack-merge')
 const path = require('path')
-const webpackConfig = require('@nextcloud/webpack-vue-config')
+const webpackVueConfig = require('@nextcloud/webpack-vue-config')
 
 const config = {
-	mode: 'development',
-	devtool: '#cheap-source-map',
+	mode: process.env.NODE_ENV,
+	devtool: process.env.NODE_ENV === 'production' ? '#cheap-source-map' : '#source-map',
 	entry: {
 		tab: path.resolve(path.join('src', 'tab.js')),
 		tab20: path.resolve(path.join('src', 'tab-20.js')),
@@ -14,8 +14,8 @@ const config = {
 	},
 }
 
-webpackConfig.resolve.alias = {
+webpackVueConfig.resolve.alias = {
 	'@': path.resolve(path.join(__dirname, 'src')),
 }
 
-module.exports = merge(config, webpackConfig)
+module.exports = merge(config, webpackVueConfig)

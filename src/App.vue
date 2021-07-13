@@ -69,8 +69,8 @@ import AppNavigationItem from '@nextcloud/vue/dist/Components/AppNavigationItem'
 import AppNavigationSettings from '@nextcloud/vue/dist/Components/AppNavigationSettings'
 import AppContent from '@nextcloud/vue/dist/Components/AppContent'
 import EmptyContent from '@nextcloud/vue/dist/Components/EmptyContent'
-import Icon from './assets/images/signed-icon.svg'
-import CroppedLayoutSettings from './Components/Settings/CroppedLayoutSettings.vue'
+import Icon from '@/assets/images/signed-icon.svg'
+import CroppedLayoutSettings from '@/Components/Settings/CroppedLayoutSettings.vue'
 
 export default {
 	name: 'App',

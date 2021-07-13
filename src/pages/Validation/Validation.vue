@@ -38,7 +38,8 @@
 							:key="item.fululName"
 							class="scroll">
 							<div class="subscriber">
-								<span><b>{{ getName(item) }}</b></span>
+								<span class="data-name">{{ getName(item) }}</span>
+								<span v-if="item.email" class="data-mail"> {{ item.email }} </span>
 								<span v-if="item.signed" class="data-signed">{{ formatData(item.signed) }} </span>
 								<span v-else>{{ noDateMessage }}</span>
 							</div>
@@ -54,15 +55,20 @@
 </template>
 
 <script>
-import axios from '@nextcloud/axios'
-import Content from '@nextcloud/vue/dist/Components/Content'
-import BackgroundImage from '../assets/images/bg.png'
-import iconA from '../../img/info-circle-solid.svg'
-import iconB from '../../img/file-signature-solid.svg'
-import { generateUrl } from '@nextcloud/router'
-import { showError, showSuccess } from '@nextcloud/dialogs'
-import { translate as t } from '@nextcloud/l10n'
+// Utils
 import { fromUnixTime } from 'date-fns'
+
+// Services
+import { validateSignature } from '@/services/api/signatures'
+
+// Components
+import Content from '@nextcloud/vue/dist/Components/Content'
+import BackgroundImage from '@/assets/images/bg.png'
+
+// Icons
+import iconA from '@/assets/images/info-circle-solid.svg'
+import iconB from '@/assets/images/file-signature-solid.svg'
+import format from 'date-fns/format'
 
 export default {
 	name: 'Validation',
@@ -96,25 +102,25 @@ export default {
 			documentUuid: '',
 		}
 	},
+
 	watch: {
 		'$route.params'(toParams, previousParams) {
 			this.validateByUUID(toParams.uuid)
 		},
 	},
+
 	methods: {
 		async validateByUUID(uuid) {
 			this.hasLoading = true
 
 			try {
-				const response = await axios.get(generateUrl(`/apps/libresign/api/0.1/file/validate/uuid/${uuid}`))
-				showSuccess(t('libresign', 'This document is valid'))
+				const response = await validateSignature(uuid)
 				console.info(response)
 				this.document = response.data
 				this.hasInfo = true
 				this.hasLoading = false
 			} catch (err) {
 				this.hasLoading = false
-				showError(err.response.data.errors[0])
 			}
 		},
 		getName(user) {
@@ -137,7 +143,7 @@ export default {
 		},
 		formatData(data) {
 			try {
-				return fromUnixTime(data).toLocaleDateString()
+				return format(fromUnixTime(data), 'dd/MM/yyyy HH:mm')
 			} catch {
 				return this.noDateMessage
 			}
@@ -147,6 +153,6 @@ export default {
 </script>
 
 <style lang="scss" scoped>
-@import '../assets/styles/validation.scss';
-@import '../assets/styles/loading.scss';
+@import './validation.scss';
+@import './loading.scss';
 </style>

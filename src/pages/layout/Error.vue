@@ -26,7 +26,7 @@
 		<div id="img" />
 		<div class="content">
 			<h1>404</h1>
-			<h2 v-for="error in errors" :key="error">
+			<h2 v-for="error in errorMessage" :key="error">
 				{{ error }}
 			</h2>
 			<p>{{ paragth }}</p>
@@ -36,17 +36,24 @@
 
 <script>
 import { translate as t } from '@nextcloud/l10n'
+import { mapGetters } from 'vuex'
 
 export default {
-	name: 'DefaultPageError',
+	name: 'Error',
 
 	data() {
 		return {
-			errors: this.$store.getters.getError.length > 0
-				? this.$store.getters.getError
-				: 'Page not found.',
 			paragth: t('libresign', 'Sorry but the page you are looking for does not exist, has been removed, moved or is temporarily unavailable.'),
 		}
+	},
+
+	computed: {
+		...mapGetters(['user/getErrors']),
+		errorMessage() {
+			return this['user/getErrors'].length > 0
+				? this['user/getErrors']
+				: t('libresign', 'Page not found')
+		},
 	},
 }
 </script>
@@ -60,7 +67,7 @@ export default {
 	height: 100%;
 
 	#img{
-		background-image: url('../assets/images/sad-face-in-rounded-square.svg');
+		background-image: url('../../assets/images/sad-face-in-rounded-square.svg');
 		height: 140px;
 		width: 140px;
 		background-repeat: no-repeat;

@@ -31,7 +31,7 @@
 </template>
 
 <script>
-import AdminFormLibresign from './AdminFormLibresign'
+import AdminFormLibresign from './AdminFormLibresign.vue'
 import AllowedGroups from './AllowedGroups'
 import UrlValidation from './UrlValidation'
 import SettingsSection from '@nextcloud/vue/dist/Components/SettingsSection'

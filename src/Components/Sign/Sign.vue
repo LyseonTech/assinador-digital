@@ -41,14 +41,17 @@
 </template>
 
 <script>
+// Utils
+import { getCurrentUser } from '@nextcloud/auth'
+
+// Components
 import Modal from '@nextcloud/vue/dist/Components/Modal'
-import ResetPassword from '../../views/ResetPassword.vue'
-import CreatePassword from '../../views/CreatePassword.vue'
 import Avatar from '@nextcloud/vue/dist/Components/Avatar'
 import EmptyContent from '@nextcloud/vue/dist/Components/EmptyContent'
-import InputAction from '../InputAction'
-import Icon from '../../assets/images/signed-icon.svg'
-import { getCurrentUser } from '@nextcloud/auth'
+import ResetPassword from '@/Components/Password/Reset/Reset.vue'
+import CreatePassword from '@/Components/Password/Create/Create.vue'
+import InputAction from '@/Components/InputAction'
+import Icon from '@/assets/images/signed-icon.svg'
 
 export default {
 	name: 'Sign',

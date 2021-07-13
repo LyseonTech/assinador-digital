@@ -44,15 +44,17 @@
 	</div>
 </template>
 <script>
-import axios from '@nextcloud/axios'
+// Utils
+import { getFilePickerBuilder } from '@nextcloud/dialogs'
+import { mapActions, mapGetters } from 'vuex'
+
+// Components
 import AppSidebar from '@nextcloud/vue/dist/Components/AppSidebar'
 import EmptyContent from '@nextcloud/vue/dist/Components/EmptyContent'
 import AppSidebarTab from '@nextcloud/vue/dist/Components/AppSidebarTab'
-import { getFilePickerBuilder, showError, showSuccess } from '@nextcloud/dialogs'
-import Users from '../Components/Request'
-import { generateUrl } from '@nextcloud/router'
-import File from '../Components/File/File.vue'
-import { mapGetters } from 'vuex'
+import Users from '@/Components/Request'
+import File from '@/Components/File/File.vue'
+import { request } from '@/services/api/signatures'
 
 export default {
 	name: 'Request',
@@ -68,7 +70,6 @@ export default {
 			loading: false,
 			file: {},
 			sidebar: false,
-			signers: [],
 		}
 	},
 	computed: {
@@ -76,33 +77,22 @@ export default {
 			return Object.keys(this.file).length === 0
 		},
 		canRequest() {
-			return this.signers.length > 0
+			return this.getSigners.length > 0
 		},
 		...mapGetters(['getSidebar']),
+		...mapGetters('file', ['getSigners']),
 	},
 	methods: {
-		async getInfo(id) {
-			try {
-				const response = await axios.get(generateUrl(`/apps/libresign/api/0.1/file/validate/file_id/${id}`))
-				this.signers = response.data.signatures
-			} catch (err) {
-				this.signers = []
-			}
-		},
+		...mapActions('file', ['getSignersFile']),
+
 		async send(users) {
-			try {
-				const response = await axios.post(generateUrl('/apps/libresign/api/0.1/sign/register'), {
-					file: {
-						fileId: this.file.id,
-					},
-					name: this.file.name.split('.pdf')[0],
-					users,
-				})
-				this.clear()
-				return showSuccess(response.data.message)
-			} catch (err) {
-				showError(err.response.data.message)
-			}
+			await request(
+				users,
+				this.file.id,
+				this.file.name.split('.pdf')[0],
+				'new'
+			)
+			this.clear()
 		},
 		clear() {
 			this.file = {}
@@ -124,10 +114,9 @@ export default {
 						const indice = path.split('/').indexOf(file.name)
 						if (path.startsWith('/')) {
 							if (file.name === path.split('/')[indice]) {
-								console.info('ifThen: ', file)
 								this.file = file
+								this.getSignersFile(file.id)
 								this.handleSidebar(true)
-								this.getInfo(file.id)
 							}
 						}
 					})
